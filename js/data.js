@@ -7,7 +7,7 @@ const COURSE_DATA = {
         {
             id: 'p1',
             title: '项目一：经济管理大数据分析环境搭建',
-            desc: '搭建 Python 数据分析工作环境，为后续分析工作做准备',
+            desc: '作为恒信制造财务部数据分析实习生，搭建 Python 环境并开发会计分录打印工具',
             tags: [],
             tasks: [
                 {
@@ -15,6 +15,7 @@ const COURSE_DATA = {
                     title: '任务一：搭建 Python 分析环境',
                     tags: [],
                     content: `
+<!--STORY-->
 <h3>知识点 1：Python 简介与在财务数据分析中的应用</h3>
 <p>Python 是一种高级、解释型、通用的编程语言，由 Guido van Rossum 于 1991 年发布。它以简洁、易读的语法著称，非常适合数据分析和科学计算。</p>
 <div class="highlight-box">
@@ -60,6 +61,7 @@ print("摘要：采购原材料一批，款已付")</code></pre>
                     title: '任务二：Python 数据类型',
                     tags: ['difficulty'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：变量命名规则、注释、输入输出</h3>
 <p>Python 变量命名规则：以字母或下划线开头，区分大小写，不能使用关键字（如 <code>if</code>、<code>for</code>、<code>class</code> 等）。</p>
 <pre><code># 这是一行注释
@@ -72,11 +74,11 @@ print("欢迎，", name)</code></pre>
 
 <h3>知识点 2：数值类型</h3>
 <p>Python 的数值类型包括整型 <code>int</code>、浮点型 <code>float</code>、布尔值 <code>bool</code>。财务金额通常使用浮点型存储。</p>
-<pre><code>revenue = 1250000          # 整型
-profit_rate = 0.185        # 浮点型
+<pre><code>revenue = <!--CODE_DATA:annualRevenue2020-->          # 整型（恒信制造2020年营业收入：元）
+profit_rate = <!--CODE_DATA:grossMargin2020-->        # 浮点型（2020年毛利率）
 is_profitable = True       # 布尔值
 
-# 财务金额计算
+# 财务金额计算：恒信制造某批次产品
 price = 199.99
 quantity = 1500
 amount = price * quantity
@@ -84,10 +86,10 @@ print(f"销售金额：{amount:.2f}")</code></pre>
 
 <h3>知识点 3：算术运算符与赋值运算符</h3>
 <p>在财务场景中，运算符用于计算毛利、折旧等指标：</p>
-<pre><code>revenue = 1000000
-cost = 650000
+<pre><code>revenue = <!--CODE_DATA:annualRevenue2020-->
+cost = <!--CODE_DATA:annualCost2020-->
 
-# 毛利计算
+# 毛利计算（恒信制造2020年度）
 gross_profit = revenue - cost
 print(f"毛利：{gross_profit}")
 
@@ -95,25 +97,25 @@ print(f"毛利：{gross_profit}")
 gross_margin = gross_profit / revenue
 print(f"毛利率：{gross_margin:.2%}")
 
-# 双倍余额递减法（年折旧额 = 账面净值 × (2/使用年限)）
-book_value = 100000
+# 双倍余额递减法（恒信制造固定资产年折旧额 = 账面净值 × (2/使用年限)）
+book_value = <!--CODE_DATA:fixedAssetValue-->
 life = 5
 depreciation = book_value * (2 / life)
 print(f"第一年折旧额：{depreciation:.2f}")</code></pre>
 
 <h3>知识点 4：比较运算符与逻辑运算符</h3>
 <p>业绩达标判断场景：</p>
-<pre><code>actual = 850000
-target = 800000
+<pre><code>actual = <!--CODE_DATA:annualRevenue2020-->
+target = <!--CODE_DATA:annualRevenue2019-->
 
-# 业绩是否达标？
+# 业绩是否达标？（2020年对比2019年）
 is_pass = actual >= target
 print("业绩达标：", is_pass)
 
-# 复合条件：业绩达标且利润率大于15%
-profit = 150000
+# 复合条件：业绩达标且净利率大于7%
+profit = <!--CODE_DATA:netProfit2020-->
 profit_rate = profit / actual
-is_excellent = (actual >= target) and (profit_rate > 0.15)
+is_excellent = (actual >= target) and (profit_rate > 0.07)
 print("优秀业绩：", is_excellent)</code></pre>
 
 <h3>知识点 5：成员运算符、身份运算符与运算优先级</h3>
@@ -139,15 +141,15 @@ print(f"{'公司名称':<20}{name}")
 print(f"{'营业收入':<20}{revenue:>15,.2f} 元")</code></pre>
 
 <h3>知识点 9-11：列表、元组、字典、集合与类型转换</h3>
-<pre><code># 列表：存储多个月份的销售数据
-monthly_sales = [120, 135, 128, 142, 155, 160]
+<pre><code># 列表：恒信制造2020年上半年月度营收（单位：万元）
+monthly_sales = <!--CODE_DATA:monthlyRevenue2020List-->
 print(f"上半年平均销售额：{sum(monthly_sales)/len(monthly_sales):.1f} 万元")
 
-# 字典：存储科目余额
+# 字典：存储主要科目期末余额（元）
 balances = {
-    "库存现金": 50000,
-    "银行存款": 250000,
-    "应收账款": 180000
+    "库存现金": 100000,
+    "银行存款": 2960000,
+    "应收账款": 5180000
 }
 print(balances.get("银行存款", 0))
 
@@ -168,6 +170,7 @@ print(f"总金额：{price * qty:.2f}")</code></pre>
                     title: '任务三：流程控制',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：流程控制分类与缩进规则</h3>
 <p>Python 使用缩进（通常为4个空格）来表示代码块，这是 Python 语法的重要特征。</p>
 
@@ -217,7 +220,7 @@ print(f"绩效等级：{grade}")</code></pre>
 
 <h3>知识点 5：while 循环</h3>
 <p>双倍余额递减法折旧计算：</p>
-<pre><code>original_value = 100000
+<pre><code>original_value = <!--CODE_DATA:fixedAssetValue-->
 life = 5
 year = 1
 book_value = original_value
@@ -290,6 +293,7 @@ for subject in subjects:
                     title: '任务四：函数及变量',
                     tags: [],
                     content: `
+<!--STORY-->
 <h3>知识点 1：内置函数简介</h3>
 <p>Python 提供了丰富的内置函数，如 <code>print()</code>、<code>len()</code>、<code>sum()</code>、<code>max()</code>、<code>min()</code>、<code>round()</code>、<code>abs()</code> 等。</p>
 
@@ -307,8 +311,8 @@ for subject in subjects:
     else:
         return 0
 
-# 调用函数
-dep = calculate_depreciation(100000, 5000, 5, "straight")
+# 调用函数（恒信制造固定资产原值750万元，残值15万元，使用年限5年）
+dep = calculate_depreciation(7500000, 150000, 5, "straight")
 print(f"年折旧额：{dep:.2f}")</code></pre>
 
 <h3>知识点 3：函数的形参与实参</h3>
@@ -353,7 +357,7 @@ status = "盈利" if revenue > cost else "亏损"
         {
             id: 'p2',
             title: '项目二：经济管理大数据获取',
-            desc: '爬取上市公司财务报表数据，保存为本地文件',
+            desc: '为撰写 IPO 招股书行业对比章节，通过 Tushare 和爬虫获取同行业可比公司数据',
             tags: [],
             tasks: [
                 {
@@ -361,6 +365,7 @@ status = "盈利" if revenue > cost else "亏损"
                     title: '任务一：利用常规渠道获取',
                     tags: [],
                     content: `
+<!--STORY-->
 <h3>知识点 1：企业财务数据的常见来源</h3>
 <ul>
 <li><strong>官方渠道：</strong>上交所、深交所、巨潮资讯网</li>
@@ -381,7 +386,7 @@ status = "盈利" if revenue > cost else "亏损"
 # 初始化（需替换为你的 Token）
 pro = ts.pro_api('your_token_here')
 
-# 获取日线行情
+# 获取同行业可比公司日线行情（恒信制造所属行业：通用设备制造）
 df = pro.daily(ts_code='000001.SZ', start_date='20200101', end_date='20201231')
 print(df.head())</code></pre>
 
@@ -401,6 +406,7 @@ print(df.head())</code></pre>
                     title: '任务二：利用爬虫技术获取',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：爬虫概念与基本工作流程</h3>
 <p>网络爬虫（Web Crawler）是自动抓取网页信息的程序。基本流程：</p>
 <ol>
@@ -503,7 +509,7 @@ for url, name in urls:
         {
             id: 'p3',
             title: '项目三：经济管理大数据预处理',
-            desc: '对原始财务数据进行清洗，输出规范的分析用数据集',
+            desc: '清洗从 ERP 导出的原始财务数据，处理缺失值、重复值和异常字符',
             tags: [],
             tasks: [
                 {
@@ -511,6 +517,7 @@ for url, name in urls:
                     title: '任务一：认识 Pandas',
                     tags: ['key'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：NumPy 数组基础</h3>
 <pre><code>import numpy as np
 
@@ -523,21 +530,21 @@ print(arr.std())    # 标准差</code></pre>
 <pre><code>import pandas as pd
 
 # Series 一维数据结构
-s = pd.Series([50000, 250000, 180000], index=["库存现金", "银行存款", "应收账款"])
+s = pd.Series([100000, 2960000, 5180000], index=["库存现金", "银行存款", "应收账款"])
 
 # DataFrame 二维数据结构（财务表格）
 df = pd.DataFrame({
     "科目": ["库存现金", "银行存款", "应收账款"],
-    "借方余额": [50000, 250000, 180000],
+    "借方余额": [100000, 2960000, 5180000],
     "贷方余额": [0, 0, 0]
 })
 print(df.shape)   # (3, 3)
 print(df.columns) # 列名
 print(df.dtypes)  # 数据类型
 
-# 资产负债率计算（简化示例）
-assets = 1000000
-liabilities = 400000
+# 资产负债率计算（恒信制造2020年末）
+assets = <!--CODE_DATA:totalAssets2020-->
+liabilities = <!--CODE_DATA:totalLiabilities2020-->
 debt_ratio = liabilities / assets
 print(f"资产负债率：{debt_ratio:.2%}")</code></pre>
 
@@ -563,6 +570,7 @@ with pd.ExcelWriter("output.xlsx") as writer:
                     title: '任务二：数据筛选与查询',
                     tags: ['key'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：直接筛选</h3>
 <pre><code># 单列
 df["科目名称"]
@@ -621,6 +629,7 @@ df["业绩等级"] = df["净利率"].apply(
                     title: '任务三：数据清洗与处理',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：数据清洗的内容与意义</h3>
 <p>原始财务数据常存在<strong>缺失值、重复值、异常字符、格式不统一</strong>等问题，清洗是数据分析的必要前置步骤。</p>
 
@@ -669,7 +678,10 @@ df["日期"] = pd.to_datetime(df["日期"])
 # 类别型（节省内存）
 df["科目类型"] = df["科目类型"].astype("category")</code></pre>
 
-<h3>知识点 7：综合案例</h3>
+<h3>知识点 7：综合案例——恒信制造 ERP 数据清洗</h3>
+<p>以下是从恒信制造 ERP 系统导出的原始凭证数据，包含多种常见的数据质量问题：</p>
+<!--TABLE:vouchersDirty-->
+
 <pre><code>def clean_finance_data(df):
     """财务数据清洗完整流程"""
     # 1. 去重
@@ -690,6 +702,9 @@ df["科目类型"] = df["科目类型"].astype("category")</code></pre>
     df["摘要"] = df["摘要"].astype(str).str.strip()
     
     return df</code></pre>
+
+<p>清洗后的标准数据如下：</p>
+<!--TABLE:vouchersClean-->
 `,
                     quiz: [
                         { id: 'p3-t3-q1', question: '删除 DataFrame 中完全重复的行应使用？', type: 'single', options: ['df.dropna()', 'df.drop_duplicates()', 'df.unique()', 'df.remove()'], answer: 1, explain: 'drop_duplicates() 用于删除重复行，dropna() 用于删除缺失值。' },
@@ -702,7 +717,7 @@ df["科目类型"] = df["科目类型"].astype("category")</code></pre>
         {
             id: 'p4',
             title: '项目四：经济管理大数据分析',
-            desc: '完成企业盈利能力、营运能力的描述性统计与分类分析报告',
+            desc: '基于清洗后的恒信制造 2019-2020 年度财务数据，完成描述性统计与四大能力分析',
             tags: [],
             tasks: [
                 {
@@ -710,21 +725,25 @@ df["科目类型"] = df["科目类型"].astype("category")</code></pre>
                     title: '任务一：经济管理数据特征分析',
                     tags: ['key'],
                     content: `
+<!--STORY-->
 <h3>知识点 1：常用统计函数</h3>
 <pre><code>import pandas as pd
 
 df = pd.DataFrame({
-    "月份": ["1月", "2月", "3月", "4月", "5月", "6月"],
-    "营收": [120, 135, 128, 142, 155, 160]
+    "月份": ["2019-01", "2019-02", "2019-03", "2019-04", "2019-05", "2019-06"],
+    "营收(万元)": [82.0, 75.6, 91.0, 94.5, 102.0, 108.0]
 })
 
-print(df["营收"].sum())      # 求和
-print(df["营收"].mean())     # 平均数
-print(df["营收"].min())      # 最小值
-print(df["营收"].max())      # 最大值
-print(df["营收"].median())   # 中位数
-print(df["营收"].std())      # 标准差
-print(df["营收"].var())      # 方差</code></pre>
+print(df["营收(万元)"].sum())      # 求和
+print(df["营收(万元)"].mean())     # 平均数
+print(df["营收(万元)"].min())      # 最小值
+print(df["营收(万元)"].max())      # 最大值
+print(df["营收(万元)"].median())   # 中位数
+print(df["营收(万元)"].std())      # 标准差
+print(df["营收(万元)"].var())      # 方差</code></pre>
+
+<p>恒信制造 2019-2020 年 24 个月完整月度营收数据：</p>
+<!--TABLE:monthlyRevenue-->
 
 <h3>知识点 2：describe 描述性统计摘要</h3>
 <pre><code># 一键生成统计摘要
@@ -766,6 +785,7 @@ print(df[["月份", "营收", "环比"]])</code></pre>
                     title: '任务二：经济管理数据分类统计分析',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>知识点 1-2：groupby 与 agg</h3>
 <pre><code># 按年度分组统计
 import pandas as pd
@@ -773,18 +793,21 @@ import pandas as pd
 df = pd.DataFrame({
     "年份": [2019, 2019, 2020, 2020],
     "季度": ["Q1", "Q2", "Q1", "Q2"],
-    "营收": [500, 550, 600, 650],
-    "成本": [300, 320, 350, 360]
+    "营收(万元)": [500, 550, 600, 650],
+    "成本(万元)": [300, 320, 350, 360]
 })
 
 # 基础分组统计
-print(df.groupby("年份")["营收"].sum())
+print(df.groupby("年份")["营收(万元)"].sum())
 
 # 多聚合函数
 print(df.groupby("年份").agg({
-    "营收": ["sum", "mean", "max"],
-    "成本": ["sum", "mean"]
+    "营收(万元)": ["sum", "mean", "max"],
+    "成本(万元)": ["sum", "mean"]
 }))</code></pre>
+
+<p>恒信制造 2019-2020 年度利润表：</p>
+<!--TABLE:incomeStatement-->
 
 <h3>知识点 3：按年度、季度分类统计</h3>
 <pre><code># 多级分组
@@ -833,7 +856,7 @@ print(pivot)</code></pre>
         {
             id: 'p5',
             title: '项目五：经济管理大数据可视化',
-            desc: '制作企业年度经营数据可视化图表集与交互式看板',
+            desc: '为董事会汇报制作恒信制造经营数据可视化图表集与交互式 HTML 看板',
             tags: [],
             tasks: [
                 {
@@ -841,6 +864,7 @@ print(pivot)</code></pre>
                     title: '任务一：编制经济管理数据可视化图表',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>知识点 1-3：Matplotlib 基础</h3>
 <pre><code>import matplotlib.pyplot as plt
 
@@ -851,22 +875,22 @@ plt.rcParams["axes.unicode_minus"] = False
 # 画布与子图
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
-# 折线图：月度营收趋势
+# 折线图：恒信制造月度营收趋势
 months = ["1月", "2月", "3月", "4月", "5月", "6月"]
-revenue = [120, 135, 128, 142, 155, 160]
+revenue = <!--CODE_DATA:monthlyRevenue2020List-->
 axes[0,0].plot(months, revenue, marker="o", color="#2563eb")
-axes[0,0].set_title("月度营收趋势")
+axes[0,0].set_title("恒信制造2020上半年月度营收趋势")
 axes[0,0].set_ylabel("万元")
 
 # 柱状图：多费用项目对比
-expenses = ["人工", "材料", "管理", "销售"]
-amounts = [45, 60, 25, 15]
-axes[0,1].bar(expenses, amounts, color=["#2563eb", "#16a34a", "#d97706", "#dc2626"])
+expenses = <!--CODE_DATA:expenseCategories-->
+amounts = <!--CODE_DATA:expenseAmounts-->
+axes[0,1].bar(expenses[:4], amounts[:4], color=["#2563eb", "#16a34a", "#d97706", "#dc2626"])
 axes[0,1].set_title("费用项目对比")
 
 # 饼图：成本结构占比
 axes[1,0].pie(amounts, labels=expenses, autopct="%1.1f%%")
-axes[1,0].set_title("成本结构占比")
+axes[1,0].set_title("恒信制造2020年费用结构占比")
 
 plt.tight_layout()
 plt.show()</code></pre>
@@ -881,9 +905,9 @@ from pyecharts import options as opts
 
 # Pyecharts 柱状图
 bar = Bar()
-bar.add_xaxis(months)
-bar.add_yaxis("营收", revenue)
-bar.set_global_opts(title_opts=opts.TitleOpts(title="月度营收"))
+bar.add_xaxis(["1月", "2月", "3月", "4月", "5月", "6月"])
+bar.add_yaxis("营收(万元)", <!--CODE_DATA:monthlyRevenue2020List-->)
+bar.set_global_opts(title_opts=opts.TitleOpts(title="恒信制造2020上半年月度营收"))
 bar.render("bar_chart.html")
 
 # 全局配置项：标题、图例、坐标轴、工具箱
@@ -905,6 +929,7 @@ bar.set_global_opts(
                     title: '任务二：优化经济管理数据可视化图表',
                     tags: [],
                     content: `
+<!--STORY-->
 <h3>知识点 1-2：Pyecharts 系列配置与主题</h3>
 <pre><code>from pyecharts.globals import ThemeType
 
@@ -962,7 +987,7 @@ timeline.render("timeline.html")</code></pre>
         {
             id: 'p6',
             title: '项目六：经济管理大数据综合分析',
-            desc: '恒信制造有限公司年度经营数据分析完整报告',
+            desc: '整合前五个项目成果，编制《恒信制造 2019-2020 年度经营数据分析报告》',
             tags: ['key','difficulty','core'],
             tasks: [
                 {
@@ -970,15 +995,25 @@ timeline.render("timeline.html")</code></pre>
                     title: '综合任务：全流程实战',
                     tags: ['key','difficulty','core'],
                     content: `
+<!--STORY-->
 <h3>综合任务 1：数据获取</h3>
-<p>获取恒信制造有限公司 2019-2020 年财务原始数据，包括资产负债表、利润表、现金流量表。</p>
+<p>获取恒信制造有限公司 2019-2020 年财务原始数据，包括资产负债表、利润表、现金流量表。你可以直接从本页下载数据文件，然后在 Python 中读取分析。</p>
+
+<p>资产负债表（2019-2020年末对比）：</p>
+<!--TABLE:balanceSheet2019-->
+
+<p>利润表（2019-2020年度）：</p>
+<!--TABLE:incomeStatement-->
+
+<p>现金流量表（2020年度）：</p>
+<!--TABLE:cashFlow2020-->
+
 <pre><code>import pandas as pd
 
-# 读取本地财务数据
-bs2019 = pd.read_excel("hengxin_2019.xlsx", sheet_name="资产负债表")
-bs2020 = pd.read_excel("hengxin_2020.xlsx", sheet_name="资产负债表")
-pl2019 = pd.read_excel("hengxin_2019.xlsx", sheet_name="利润表")
-pl2020 = pd.read_excel("hengxin_2020.xlsx", sheet_name="利润表")</code></pre>
+# 读取本地财务数据（请先下载上方CSV/Excel文件）
+bs = pd.read_excel("恒信制造_资产负债表.xlsx")
+pl = pd.read_excel("恒信制造_利润表.xlsx")
+cf = pd.read_excel("恒信制造_2020年现金流量表.xlsx")</code></pre>
 
 <h3>综合任务 2：数据清洗</h3>
 <pre><code>def clean_finance_table(df):
@@ -997,21 +1032,25 @@ bs2019 = clean_finance_table(bs2019)
 bs2020 = clean_finance_table(bs2020)</code></pre>
 
 <h3>综合任务 3：指标计算</h3>
-<pre><code># 盈利能力指标
-net_profit = pl2020.loc[pl2020["项目"]=="净利润", "本年累计"].values[0]
-revenue = pl2020.loc[pl2020["项目"]=="营业收入", "本年累计"].values[0]
+<pre><code># 盈利能力指标（基于恒信制造2020年利润表）
+net_profit = <!--CODE_DATA:netProfit2020-->
+revenue = <!--CODE_DATA:annualRevenue2020-->
 net_margin = net_profit / revenue
 print(f"2020年净利率：{net_margin:.2%}")
 
-# 偿债能力指标
-total_assets = bs2020.loc[bs2020["项目"]=="资产总计", "期末余额"].values[0]
-total_liabilities = bs2020.loc[bs2020["项目"]=="负债合计", "期末余额"].values[0]
+# 偿债能力指标（基于2020年末资产负债表）
+total_assets = <!--CODE_DATA:totalAssets2020-->
+total_liabilities = <!--CODE_DATA:totalLiabilities2020-->
 debt_ratio = total_liabilities / total_assets
 print(f"2020年资产负债率：{debt_ratio:.2%}")
 
-# 营运能力指标（简化）
+# 营运能力指标
 total_asset_turnover = revenue / total_assets
-print(f"总资产周转率：{total_asset_turnover:.2f}")</code></pre>
+print(f"总资产周转率：{total_asset_turnover:.2f}")
+
+# 发展能力指标
+roe = <!--CODE_DATA:roe2020-->
+print(f"净资产收益率(ROE)：{roe:.2%}")</code></pre>
 
 <h3>综合任务 4：统计分析</h3>
 <pre><code># 年度对比

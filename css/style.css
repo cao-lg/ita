@@ -1143,6 +1143,81 @@ code {
 .tag-key { background: #fef3c7; color: #92400e; }
 .tag-core { background: #dbeafe; color: #1e40af; }
 
+/* ===== 情境故事框 ===== */
+.story-box {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: white;
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-md);
+}
+.story-box h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: white;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.story-box p {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 12px;
+    color: rgba(255,255,255,0.92);
+}
+.story-meta {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    border-top: 1px solid rgba(255,255,255,0.2);
+    padding-top: 10px;
+    margin-top: 4px;
+}
+
+/* ===== 数据表格区块 ===== */
+.data-table-section {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    margin: 20px 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.data-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+}
+.data-table-header h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.data-table-actions {
+    display: flex;
+    gap: 8px;
+}
+.table-scroll {
+    overflow: auto;
+    max-height: 420px;
+}
+.table-scroll .content-table {
+    margin: 0;
+    border: none;
+}
+.table-scroll .content-table th {
+    position: sticky;
+    top: 0;
+    background: var(--gray-50);
+    z-index: 1;
+}
+
 /* 学习页底部测验 */
 .task-quiz-section {
     margin-top: 32px;
@@ -1165,3 +1240,112 @@ code {
 .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
 .empty-state-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; color: var(--gray-600); }
 .empty-state-desc { font-size: 14px; }
+
+/* ===== 演示模式 ===== */
+.auth-demo-entry {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--gray-200);
+    text-align: center;
+}
+.auth-demo-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    color: var(--gray-400);
+    font-size: 13px;
+}
+.auth-demo-divider::before,
+.auth-demo-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--gray-200);
+}
+.auth-demo-desc {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--gray-400);
+}
+.btn-demo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid var(--warning);
+    background: var(--warning-light);
+    color: #92400e;
+    transition: var(--transition);
+    width: 100%;
+}
+.btn-demo:hover {
+    background: var(--warning);
+    color: white;
+    border-color: var(--warning);
+}
+.demo-icon {
+    font-size: 14px;
+}
+
+/* 演示模式横幅 */
+.demo-banner {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    z-index: 99;
+    background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+.demo-banner-content {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 8px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+}
+.demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(4px);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    color: #78350f;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.demo-banner-text {
+    color: #78350f;
+    flex: 1;
+}
+.demo-banner-close {
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 12px;
+    color: #78350f;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.demo-banner-close:hover {
+    background: rgba(255,255,255,0.5);
+}
+
+/* 演示模式下的内容区偏移 */
+body.demo-active .app-main {
+    padding-top: calc(32px + 38px);
+}

@@ -26,7 +26,7 @@
 
     function checkAuth() {
         const data = Storage.getData();
-        if (data.userInfo.name) {
+        if (data.userInfo.name || DemoMode.isActive()) {
             showMainPage();
         } else {
             showAuthPage();
@@ -40,10 +40,21 @@
     }
 
     function showMainPage() {
-        const data = Storage.getData();
+        const isDemo = DemoMode.isActive();
+        const data = isDemo ? DemoMode.getDemoData() : Storage.getData();
         $('#auth-page').classList.add('hidden');
         $('#main-page').classList.remove('hidden');
         $('#header-user-name').textContent = `${data.userInfo.name} (${data.userInfo.studentId})`;
+
+        // 演示模式横幅
+        if (isDemo) {
+            $('#demo-banner').classList.remove('hidden');
+            document.body.classList.add('demo-active');
+        } else {
+            $('#demo-banner').classList.add('hidden');
+            document.body.classList.remove('demo-active');
+        }
+
         renderDashboard();
     }
 
@@ -84,8 +95,31 @@
 
         // 退出
         $('#logout-btn').addEventListener('click', () => {
+            if (DemoMode.isActive()) {
+                DemoMode.deactivate();
+            }
             if (confirm('确定要退出吗？')) {
                 showAuthPage();
+            }
+        });
+
+        // 演示模式按钮（登录页）
+        $('#demo-mode-btn')?.addEventListener('click', () => {
+            DemoMode.activate();
+            showMainPage();
+            toast('已进入演示模式');
+        });
+
+        // 退出演示模式（横幅按钮）
+        $('#exit-demo-btn')?.addEventListener('click', () => {
+            DemoMode.deactivate();
+            const data = Storage.getData();
+            if (data.userInfo.name) {
+                showMainPage();
+                toast('已退出演示模式，恢复真实学习数据');
+            } else {
+                showAuthPage();
+                toast('已退出演示模式');
             }
         });
 
@@ -142,7 +176,8 @@
 
     // ===== 项目总览页 =====
     function renderDashboard() {
-        const stats = Storage.getStats();
+        const isDemo = DemoMode.isActive();
+        const stats = isDemo ? DemoMode.getDemoStats() : Storage.getStats();
         $('#overall-progress').textContent = stats.overallProgress + '%';
         $('#completed-projects').textContent = `${stats.testPassed}/${stats.testTotal}`;
         $('#total-score').textContent = stats.avgScore;
@@ -152,9 +187,10 @@
         grid.innerHTML = '';
 
         COURSE_DATA.projects.forEach((proj, idx) => {
-            const unlocked = Storage.isProjectUnlocked(proj.id);
-            const progress = Storage.getProjectProgress(proj.id);
-            const testRecord = Storage.getData().unitTestRecords[proj.id];
+            const unlocked = isDemo || Storage.isProjectUnlocked(proj.id);
+            const progress = isDemo ? DemoMode.getDemoProjectProgress(proj.id) : Storage.getProjectProgress(proj.id);
+            const demoData = isDemo ? DemoMode.getDemoData() : null;
+            const testRecord = isDemo ? (demoData.unitTestRecords[proj.id] || null) : (Storage.getData().unitTestRecords[proj.id] || null);
             const bestScore = testRecord ? testRecord.bestScore : null;
             const completed = bestScore !== null && bestScore >= 60;
 
@@ -197,12 +233,13 @@
     // ===== 课程学习页 =====
     function renderLearningPage() {
         renderSidebar();
+        const isDemo = DemoMode.isActive();
         // 默认加载第一个可访问任务
         if (!currentTask) {
             for (const p of COURSE_DATA.projects) {
-                if (Storage.isProjectUnlocked(p.id)) {
+                if (isDemo || Storage.isProjectUnlocked(p.id)) {
                     for (const t of p.tasks) {
-                        if (Storage.isTaskAccessible(t.id)) {
+                        if (isDemo || Storage.isTaskAccessible(t.id)) {
                             loadTask(t.id);
                             return;
                         }
@@ -217,10 +254,11 @@
     function renderSidebar() {
         const toc = $('#course-toc');
         toc.innerHTML = '';
-        const data = Storage.getData();
+        const isDemo = DemoMode.isActive();
+        const data = isDemo ? DemoMode.getDemoData() : Storage.getData();
 
         COURSE_DATA.projects.forEach(proj => {
-            const unlocked = Storage.isProjectUnlocked(proj.id);
+            const unlocked = isDemo || Storage.isProjectUnlocked(proj.id);
             const projEl = document.createElement('div');
             projEl.className = 'toc-project';
 
@@ -237,7 +275,7 @@
 
             proj.tasks.forEach(task => {
                 const taskEl = document.createElement('div');
-                const accessible = unlocked && Storage.isTaskAccessible(task.id);
+                const accessible = unlocked; // 演示模式下全部可访问
                 const learned = data.taskLearned[task.id];
                 const quizDone = data.taskQuizStatus[task.id];
                 taskEl.className = `toc-task ${currentTask === task.id ? 'active' : ''} ${learned ? 'done' : ''}`;
@@ -270,7 +308,8 @@
 
     function loadTask(taskId) {
         currentTask = taskId;
-        const data = Storage.getData();
+        const isDemo = DemoMode.isActive();
+        const data = isDemo ? DemoMode.getDemoData() : Storage.getData();
 
         // 查找任务
         let task = null, project = null;
@@ -280,8 +319,10 @@
         }
         if (!task) return;
 
-        // 检查是否可访问
-        if (!Storage.isTaskAccessible(taskId)) {
+        currentProjectId = project.id;
+
+        // 检查是否可访问（演示模式下全部可访问）
+        if (!isDemo && !Storage.isTaskAccessible(taskId)) {
             toast('该任务尚未解锁');
             return;
         }
@@ -333,14 +374,19 @@
         $('#prev-task-btn').addEventListener('click', () => navigateTask(-1));
         $('#next-task-btn').addEventListener('click', () => navigateTask(1));
 
-        // 记录学习
-        Storage.markTaskLearned(taskId);
+        // 记录学习（演示模式下不写入真实 Storage）
+        if (!isDemo) {
+            Storage.markTaskLearned(taskId);
+        }
         renderSidebar();
     }
 
+    let currentProjectId = null;
+
     function renderContent(html) {
-        // 将代码块包装为可复制区域
-        return html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
+        // 1. 将代码块包装为可复制区域（必须在占位符替换之前执行，
+        //    这样 CODE_DATA 替换后的代码块也能被正确包装）
+        html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
             const lang = 'python';
             return `<div class="code-block-wrapper">
                 <div class="code-header">
@@ -350,13 +396,31 @@
                 <pre><code>${code}</code></pre>
             </div>`;
         });
+
+        // 2. 注入情境故事
+        if (currentProjectId && typeof ContentEnhancer !== 'undefined') {
+            html = ContentEnhancer.injectStory(html, currentProjectId);
+        }
+
+        // 3. 渲染数据表格占位符
+        if (typeof ContentEnhancer !== 'undefined') {
+            html = ContentEnhancer.renderDataTables(html);
+        }
+
+        // 4. 嵌入代码数据占位符
+        if (typeof ContentEnhancer !== 'undefined') {
+            html = ContentEnhancer.injectCodeData(html, currentTask);
+        }
+
+        return html;
     }
 
     function navigateTask(dir) {
+        const isDemo = DemoMode.isActive();
         const allTasks = [];
         COURSE_DATA.projects.forEach(p => {
             p.tasks.forEach(t => {
-                if (Storage.isTaskAccessible(t.id)) allTasks.push(t.id);
+                if (isDemo || Storage.isTaskAccessible(t.id)) allTasks.push(t.id);
             });
         });
         const idx = allTasks.indexOf(currentTask);
@@ -462,7 +526,8 @@
     function finishQuiz() {
         const { task, score, answers, wrong } = currentQuiz;
         const total = task.quiz.length;
-        const percentage = Storage.recordQuiz(task.id, score, total, answers, wrong);
+        const isDemo = DemoMode.isActive();
+        const percentage = isDemo ? Math.round((score / total) * 100) : Storage.recordQuiz(task.id, score, total, answers, wrong);
 
         $('#quiz-modal-body').innerHTML = `
             <div style="text-align:center;padding:20px">
@@ -489,13 +554,14 @@
 
     // ===== 测评考核页 =====
     function renderAssessmentPage() {
-        const data = Storage.getData();
+        const isDemo = DemoMode.isActive();
+        const data = isDemo ? DemoMode.getDemoData() : Storage.getData();
 
         // 知识点小测列表
         const quizList = $('#quiz-list');
         quizList.innerHTML = '';
         COURSE_DATA.projects.forEach(proj => {
-            if (!Storage.isProjectUnlocked(proj.id)) return;
+            if (!isDemo && !Storage.isProjectUnlocked(proj.id)) return;
             proj.tasks.forEach(task => {
                 if (!task.quiz || task.quiz.length === 0) return;
                 const record = data.quizRecords[task.id];
@@ -522,7 +588,7 @@
         COURSE_DATA.projects.forEach(proj => {
             const test = COURSE_DATA.unitTests[proj.id];
             if (!test) return;
-            const unlocked = Storage.isProjectUnlocked(proj.id);
+            const unlocked = isDemo || Storage.isProjectUnlocked(proj.id);
             const record = data.unitTestRecords[proj.id];
             const item = document.createElement('div');
             item.className = 'assessment-item';
@@ -679,7 +745,8 @@
         });
 
         const duration = Math.round((Date.now() - examStartTime) / 1000);
-        const percentage = Storage.recordUnitTest(projectId, score, test.questions.length, answerList, wrong, duration);
+        const isDemo = DemoMode.isActive();
+        const percentage = isDemo ? Math.round((score / test.questions.length) * 100) : Storage.recordUnitTest(projectId, score, test.questions.length, answerList, wrong, duration);
 
         // 显示结果
         const passed = percentage >= 60;
@@ -732,14 +799,15 @@
 
     // ===== 学习数据中心 =====
     function renderDataCenterPage() {
-        const data = Storage.getData();
-        const stats = Storage.getStats();
+        const isDemo = DemoMode.isActive();
+        const data = isDemo ? DemoMode.getDemoData() : Storage.getData();
+        const stats = isDemo ? DemoMode.getDemoStats() : Storage.getStats();
 
         // 学习进度
         const progressDetail = $('#progress-detail');
         let progressHtml = '';
         COURSE_DATA.projects.forEach(p => {
-            const prog = Storage.getProjectProgress(p.id);
+            const prog = isDemo ? DemoMode.getDemoProjectProgress(p.id) : Storage.getProjectProgress(p.id);
             const test = data.unitTestRecords[p.id];
             progressHtml += `
                 <div class="progress-detail-item">
