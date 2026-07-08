@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经济管理大数据分析学习平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录/注册页 -->
+        <div id="auth-page" class="page">
+            <div class="auth-container">
+                <div class="auth-brand">
+                    <h1>恒信制造有限公司</h1>
+                    <p>2019-2020 年度经营数据分析与可视化报告</p>
+                    <div class="auth-brand-badge">经济管理大数据分析学习平台</div>
+                </div>
+                <div class="auth-form-wrapper">
+                    <h2>学员登录</h2>
+                    <form id="auth-form">
+                        <div class="form-group">
+                            <label>姓名</label>
+                            <input type="text" id="user-name" required placeholder="请输入姓名">
+                        </div>
+                        <div class="form-group">
+                            <label>班级</label>
+                            <input type="text" id="user-class" required placeholder="请输入班级">
+                        </div>
+                        <div class="form-group">
+                            <label>学号</label>
+                            <input type="text" id="user-id" required placeholder="请输入学号">
+                        </div>
+                        <button type="submit" class="btn-primary">开始学习</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主应用页 -->
+        <div id="main-page" class="page hidden">
+            <!-- 顶部导航 -->
+            <header class="app-header">
+                <div class="header-brand">
+                    <span class="logo-icon">&#128200;</span>
+                    <span class="logo-text">经济管理大数据分析学习平台</span>
+                </div>
+                <nav class="header-nav">
+                    <a href="#" data-page="dashboard" class="nav-link active">项目总览</a>
+                    <a href="#" data-page="learning" class="nav-link">课程学习</a>
+                    <a href="#" data-page="assessment" class="nav-link">测评考核</a>
+                    <a href="#" data-page="data-center" class="nav-link">学习数据</a>
+                    <a href="#" data-page="settings" class="nav-link">系统设置</a>
+                </nav>
+                <div class="header-user">
+                    <span id="header-user-name"></span>
+                    <button id="logout-btn" class="btn-text">退出</button>
+                </div>
+            </header>
+
+            <!-- 页面内容区 -->
+            <main class="app-main">
+                <!-- 项目总览页 -->
+                <div id="page-dashboard" class="main-page">
+                    <div class="page-header">
+                        <h2>项目导航总览</h2>
+                        <p>完成各项目单元，输出企业经营数据分析可视化报告</p>
+                    </div>
+                    <div class="progress-summary">
+                        <div class="progress-card">
+                            <div class="progress-value" id="overall-progress">0%</div>
+                            <div class="progress-label">总进度</div>
+                        </div>
+                        <div class="progress-card">
+                            <div class="progress-value" id="completed-projects">0/6</div>
+                            <div class="progress-label">已完成项目</div>
+                        </div>
+                        <div class="progress-card">
+                            <div class="progress-value" id="total-score">0</div>
+                            <div class="progress-label">平均得分</div>
+                        </div>
+                        <div class="progress-card">
+                            <div class="progress-value" id="learn-time">0h</div>
+                            <div class="progress-label">学习时长</div>
+                        </div>
+                    </div>
+                    <div class="projects-grid" id="projects-grid"></div>
+                </div>
+
+                <!-- 课程学习页 -->
+                <div id="page-learning" class="main-page hidden">
+                    <div class="learning-layout">
+                        <aside class="learning-sidebar">
+                            <div class="sidebar-header">
+                                <h3>课程目录</h3>
+                            </div>
+                            <div class="sidebar-content" id="course-toc"></div>
+                        </aside>
+                        <div class="learning-content">
+                            <div id="learning-main" class="learning-main"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 测评考核页 -->
+                <div id="page-assessment" class="main-page hidden">
+                    <div class="page-header">
+                        <h2>测评考核中心</h2>
+                        <p>知识点小测与单元综合测试</p>
+                    </div>
+                    <div class="assessment-layout">
+                        <div class="assessment-section">
+                            <h3>知识点小测</h3>
+                            <div id="quiz-list" class="assessment-list"></div>
+                        </div>
+                        <div class="assessment-section">
+                            <h3>单元综合测试</h3>
+                            <div id="unit-test-list" class="assessment-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 学习数据页 -->
+                <div id="page-data-center" class="main-page hidden">
+                    <div class="page-header">
+                        <h2>学习数据中心</h2>
+                        <p>学习进度、成绩统计与效果分析</p>
+                    </div>
+                    <div class="data-center-grid">
+                        <div class="data-card">
+                            <h3>学习进度</h3>
+                            <div id="progress-detail"></div>
+                        </div>
+                        <div class="data-card">
+                            <h3>成绩统计</h3>
+                            <div id="score-stats"></div>
+                        </div>
+                        <div class="data-card full-width">
+                            <h3>错题回顾</h3>
+                            <div id="wrong-questions"></div>
+                        </div>
+                        <div class="data-card full-width">
+                            <h3>学习效果分析</h3>
+                            <div id="learning-analysis"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统设置页 -->
+                <div id="page-settings" class="main-page hidden">
+                    <div class="page-header">
+                        <h2>系统设置</h2>
+                        <p>个人信息管理与数据导入导出</p>
+                    </div>
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <h3>个人信息</h3>
+                            <form id="settings-form">
+                                <div class="form-group">
+                                    <label>姓名</label>
+                                    <input type="text" id="settings-name" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>班级</label>
+                                    <input type="text" id="settings-class" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>学号</label>
+                                    <input type="text" id="settings-id" readonly>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="settings-card">
+                            <h3>数据管理</h3>
+                            <div class="settings-actions">
+                                <button id="export-json-btn" class="btn-secondary">导出学习档案 (JSON)</button>
+                                <button id="export-excel-btn" class="btn-secondary">导出学习档案 (Excel)</button>
+                                <button id="import-btn" class="btn-secondary">导入学习档案</button>
+                                <input type="file" id="import-file" accept=".json" class="hidden">
+                                <button id="reset-btn" class="btn-danger">重置学习进度</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 答题弹窗 -->
+        <div id="quiz-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="quiz-modal-title">知识点小测</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="quiz-modal-body"></div>
+                <div class="modal-footer" id="quiz-modal-footer"></div>
+            </div>
+        </div>
+
+        <!-- 单元测试弹窗 -->
+        <div id="exam-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3 id="exam-modal-title">单元综合测试</h3>
+                    <div class="exam-timer" id="exam-timer">剩余时间: 30:00</div>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="exam-modal-body"></div>
+                <div class="modal-footer" id="exam-modal-footer"></div>
+            </div>
+        </div>
+
+        <!-- 提示消息 -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
