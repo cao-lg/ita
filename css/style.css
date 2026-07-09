@@ -1362,3 +1362,388 @@ code {
 body.demo-active .app-main {
     padding-top: calc(32px + 38px);
 }
+
+/* ===== 题目认知标签 ===== */
+.question-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.q-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.q-tag.bloom {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+.q-tag.solo {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+/* ===== 案例文本 ===== */
+.case-text {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--gray-700);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+/* ===== 代码题区域 ===== */
+.code-question-area {
+    margin-top: 12px;
+}
+.code-question-area .starter-code {
+    margin-bottom: 12px;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.code-question-area .starter-code pre {
+    margin: 0;
+    padding: 16px;
+    font-size: 13px;
+}
+.test-cases {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+}
+.test-case-item {
+    font-size: 13px;
+    color: var(--gray-600);
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--gray-200);
+}
+.test-case-item:last-child { border-bottom: none; }
+.test-case-item::before {
+    content: '☐';
+    margin-right: 8px;
+    color: var(--gray-400);
+}
+
+/* ===== 设计题区域 ===== */
+.design-question-area {
+    margin-top: 12px;
+}
+.design-criteria {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+}
+.criteria-item {
+    font-size: 13px;
+    color: var(--gray-600);
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--gray-200);
+}
+.criteria-item:last-child { border-bottom: none; }
+
+/* ===== 分析报告区 ===== */
+.report-header {
+    text-align: center;
+    padding: 24px 0 16px;
+    border-bottom: 2px solid var(--primary-light);
+    margin-bottom: 16px;
+}
+.report-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-800);
+    margin-bottom: 6px;
+}
+.report-meta {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.share-btn-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+.analysis-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+.analysis-card.full-width {
+    grid-column: 1 / -1;
+}
+.analysis-card h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--gray-800);
+}
+
+.chart-container {
+    min-height: 320px;
+    width: 100%;
+}
+
+/* ===== 诊断报告卡片 ===== */
+.diagnosis-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.diagnosis-card h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.diagnosis-card p {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.7;
+}
+.diagnosis-highlight {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+}
+.diagnosis-suggestion {
+    background: white;
+    border-left: 3px solid var(--success);
+    padding: 12px 16px;
+    margin-top: 10px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 13px;
+    color: var(--gray-700);
+}
+.diagnosis-level {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 20px;
+}
+.diagnosis-level.level-1 { background: #dcfce7; color: #166534; }
+.diagnosis-level.level-2 { background: #dbeafe; color: #1e40af; }
+.diagnosis-level.level-3 { background: #fef3c7; color: #92400e; }
+
+/* ===== 证书样式 ===== */
+.certificate-wrapper {
+    padding: 24px;
+    background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%);
+}
+.certificate-border {
+    background: white;
+    border: 3px solid #d97706;
+    border-radius: 12px;
+    padding: 48px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.15);
+}
+.certificate-header {
+    margin-bottom: 32px;
+}
+.certificate-badge {
+    font-size: 13px;
+    color: #92400e;
+    font-weight: 600;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+.certificate-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #92400e;
+    letter-spacing: 6px;
+}
+.certificate-body {
+    margin: 32px 0;
+}
+.certificate-text {
+    font-size: 15px;
+    color: var(--gray-700);
+    margin-bottom: 8px;
+    line-height: 1.8;
+}
+.certificate-name {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 16px 0;
+    letter-spacing: 4px;
+}
+.certificate-level {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 16px 0;
+}
+.certificate-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid #fde68a;
+}
+.certificate-date {
+    font-size: 14px;
+    color: var(--gray-600);
+}
+.certificate-seal {
+    width: 80px;
+    height: 80px;
+}
+.seal-circle {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid #dc2626;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+    transform: rotate(-15deg);
+    opacity: 0.8;
+}
+.seal-text {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+.seal-sub {
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+/* ===== 分享报告样式 ===== */
+.shared-report {
+    padding: 24px;
+}
+.shared-report-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+.shared-report-header h2 {
+    font-size: 22px;
+    color: var(--gray-800);
+    margin-bottom: 6px;
+}
+.shared-report-header p {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+.shared-report-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.shared-stat-card {
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+}
+.shared-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+}
+.shared-stat-label {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 4px;
+}
+.shared-report-section {
+    margin-bottom: 20px;
+}
+.shared-report-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 12px;
+}
+.shared-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+.shared-bar-label {
+    width: 80px;
+    color: var(--gray-600);
+    flex-shrink: 0;
+}
+.shared-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--gray-100);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.shared-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+.shared-bar-value {
+    width: 40px;
+    text-align: right;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+.shared-knowledge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.shared-knowledge-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .shared-report-stats { grid-template-columns: repeat(2, 1fr); }
+    .analysis-grid { grid-template-columns: 1fr; }
+    .certificate-border { padding: 24px; }
+    .certificate-title { font-size: 28px; }
+}

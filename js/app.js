@@ -20,8 +20,96 @@
 
     // ===== 初始化 =====
     function init() {
+        mergeExtendedQuestions();
         bindEvents();
         checkAuth();
+        checkSharedReport();
+    }
+
+    // 合并扩展题库到课程数据，并为旧题补充标签
+    function mergeExtendedQuestions() {
+        if (typeof EXTENDED_QUESTIONS === 'undefined') return;
+        Object.keys(EXTENDED_QUESTIONS).forEach(pid => {
+            const ext = EXTENDED_QUESTIONS[pid];
+            const project = COURSE_DATA.projects.find(p => p.id === pid);
+            if (!project) return;
+            // 合并小测
+            ext.quiz.forEach(q => {
+                const taskId = q.id.split('-').slice(0, 2).join('-');
+                const task = project.tasks.find(t => t.id === taskId);
+                if (task) {
+                    if (!task.quiz) task.quiz = [];
+                    task.quiz.push(q);
+                }
+            });
+            // 合并单元测试
+            ext.unitTest.forEach(q => {
+                const ut = COURSE_DATA.unitTests[pid];
+                if (ut && ut.questions) {
+                    ut.questions.push(q);
+                }
+            });
+        });
+
+        // 为所有旧题补充 bloom/solo/knowledgeTags 标签
+        const tagMap = {
+            p1: ['Python基础', '环境搭建'],
+            p2: ['数据获取', '爬虫', 'Excel'],
+            p3: ['Pandas', '数据清洗', '预处理'],
+            p4: ['数据分析', '财务指标', '统计'],
+            p5: ['可视化', 'Matplotlib', 'Pyecharts'],
+            p6: ['综合应用', '报告撰写', '数据看板']
+        };
+        COURSE_DATA.projects.forEach(p => {
+            const defaultTags = tagMap[p.id] || ['综合'];
+            p.tasks.forEach(t => {
+                if (t.quiz) {
+                    t.quiz.forEach(q => {
+                        if (!q.bloom || !q.solo) {
+                            const inferred = Storage.inferQuestionTags(q);
+                            q.bloom = q.bloom || inferred.bloom;
+                            q.solo = q.solo || inferred.solo;
+                            q.knowledgeTags = q.knowledgeTags || (inferred.knowledgeTags.length > 0 ? inferred.knowledgeTags : [defaultTags[0]]);
+                        }
+                    });
+                }
+            });
+            const ut = COURSE_DATA.unitTests[p.id];
+            if (ut && ut.questions) {
+                ut.questions.forEach(q => {
+                    if (!q.bloom || !q.solo) {
+                        const inferred = Storage.inferQuestionTags(q);
+                        q.bloom = q.bloom || inferred.bloom;
+                        q.solo = q.solo || inferred.solo;
+                        q.knowledgeTags = q.knowledgeTags || (inferred.knowledgeTags.length > 0 ? inferred.knowledgeTags : [defaultTags[0]]);
+                    }
+                });
+            }
+        });
+    }
+
+    // 检查是否为分享链接访问
+    function checkSharedReport() {
+        if (typeof ShareLink !== 'undefined') {
+            const shared = ShareLink.parseFromURL();
+            if (shared) {
+                // 显示只读分享报告（在登录页之后覆盖）
+                setTimeout(() => {
+                    const authPage = $('#auth-page');
+                    if (authPage && !authPage.classList.contains('hidden')) {
+                        authPage.innerHTML = `
+                            <div style="max-width:800px;margin:40px auto;padding:32px;background:white;border-radius:16px;box-shadow:var(--shadow-lg)">
+                                <div id="shared-report-container"></div>
+                                <div style="text-align:center;margin-top:24px">
+                                    <button class="btn-primary" onclick="location.href=location.pathname">进入学习平台</button>
+                                </div>
+                            </div>
+                        `;
+                        ShareLink.renderSharedReport(shared, 'shared-report-container');
+                    }
+                }, 100);
+            }
+        }
     }
 
     function checkAuth() {
@@ -449,6 +537,8 @@
         const footer = $('#quiz-modal-footer');
 
         let optionsHtml = '';
+        let inputArea = '';
+
         if (q.type === 'single' || q.type === 'judge') {
             optionsHtml = `<div class="quiz-options">${q.options.map((opt, i) => `
                 <label class="quiz-option" data-idx="${i}">
@@ -456,12 +546,60 @@
                     <span>${opt}</span>
                 </label>
             `).join('')}</div>`;
+        } else if (q.type === 'multi') {
+            optionsHtml = `<div class="quiz-options">${q.options.map((opt, i) => `
+                <label class="quiz-option" data-idx="${i}">
+                    <input type="checkbox" name="quiz-opt" value="${i}">
+                    <span>${opt}</span>
+                </label>
+            `).join('')}</div>`;
+        } else if (q.type === 'case') {
+            optionsHtml = `
+                <div class="case-text">${q.caseText}</div>
+                <div class="quiz-options">${q.options.map((opt, i) => `
+                    <label class="quiz-option" data-idx="${i}">
+                        <input type="checkbox" name="quiz-opt" value="${i}">
+                        <span>${opt}</span>
+                    </label>
+                `).join('')}</div>
+            `;
+        } else if (q.type === 'code') {
+            inputArea = `
+                <div class="code-question-area">
+                    <div class="starter-code"><pre><code>${q.starterCode}</code></pre></div>
+                    <textarea class="exam-textarea" id="quiz-code-input" placeholder="请在此编写代码..."></textarea>
+                    <div class="test-cases">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">评分检查点：</p>
+                        ${q.testCases.map(tc => `<div class="test-case-item">${tc.desc}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (q.type === 'design') {
+            inputArea = `
+                <div class="design-question-area">
+                    <textarea class="exam-textarea" id="quiz-design-input" placeholder="请在此输入你的设计方案..."></textarea>
+                    <div class="design-criteria">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">评分标准（自评参考）：</p>
+                        ${q.criteria.map(c => `<div class="criteria-item">${c.item}（${c.weight}%）</div>`).join('')}
+                    </div>
+                </div>
+            `;
         }
+
+        // 认知标签
+        const tagHtml = (q.bloom || q.solo) ? `
+            <div class="question-tags">
+                ${q.bloom ? `<span class="q-tag bloom">${q.bloom}</span>` : ''}
+                ${q.solo ? `<span class="q-tag solo">${q.solo}</span>` : ''}
+            </div>
+        ` : '';
 
         body.innerHTML = `
             <div class="quiz-question">
                 <div class="quiz-question-text">${index + 1}. ${q.question}</div>
+                ${tagHtml}
                 ${optionsHtml}
+                ${inputArea}
                 <div id="quiz-result-area"></div>
             </div>
         `;
@@ -471,44 +609,100 @@
             <button class="btn-primary" id="quiz-submit-btn">提交答案</button>
         `;
 
-        // 选项点击
-        $$('.quiz-option').forEach(el => {
-            el.addEventListener('click', () => {
-                $$('.quiz-option').forEach(o => o.classList.remove('selected'));
-                el.classList.add('selected');
-                el.querySelector('input').checked = true;
+        // 单选/判断选项点击
+        if (q.type === 'single' || q.type === 'judge') {
+            $$('.quiz-option').forEach(el => {
+                el.addEventListener('click', () => {
+                    $$('.quiz-option').forEach(o => o.classList.remove('selected'));
+                    el.classList.add('selected');
+                    el.querySelector('input').checked = true;
+                });
             });
-        });
+        }
+        // 多选/案例选项点击（复选框可多选）
+        else if (q.type === 'multi' || q.type === 'case') {
+            $$('.quiz-option').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    const cb = el.querySelector('input');
+                    cb.checked = !cb.checked;
+                    el.classList.toggle('selected', cb.checked);
+                });
+            });
+        }
 
         $('#quiz-submit-btn').addEventListener('click', () => submitQuizAnswer(q));
     }
 
     function submitQuizAnswer(q) {
-        const selected = document.querySelector('input[name="quiz-opt"]:checked');
-        if (!selected) { toast('请选择答案'); return; }
+        let answer = null;
+        let correct = false;
+        let yourAnswerText = '';
+        let correctAnswerText = '';
 
-        const answer = parseInt(selected.value);
-        const correct = answer === q.answer;
+        if (q.type === 'single' || q.type === 'judge') {
+            const selected = document.querySelector('input[name="quiz-opt"]:checked');
+            if (!selected) { toast('请选择答案'); return; }
+            answer = parseInt(selected.value);
+            correct = answer === q.answer;
+            yourAnswerText = q.options[answer];
+            correctAnswerText = q.options[q.answer];
+        } else if (q.type === 'multi' || q.type === 'case') {
+            const checked = Array.from(document.querySelectorAll('input[name="quiz-opt"]:checked'));
+            if (checked.length === 0) { toast('请至少选择一项'); return; }
+            answer = checked.map(cb => parseInt(cb.value)).sort((a, b) => a - b);
+            const expected = Array.isArray(q.answer) ? [...q.answer].sort((a, b) => a - b) : [q.answer];
+            correct = JSON.stringify(answer) === JSON.stringify(expected);
+            yourAnswerText = answer.map(i => q.options[i]).join(', ');
+            correctAnswerText = expected.map(i => q.options[i]).join(', ');
+        } else if (q.type === 'code') {
+            const input = $('#quiz-code-input');
+            answer = input ? input.value.trim() : '';
+            if (!answer) { toast('请填写代码'); return; }
+            // 关键字匹配评分
+            let passed = 0;
+            q.testCases.forEach(tc => {
+                if (answer.includes(tc.check)) passed++;
+            });
+            correct = passed >= Math.ceil(q.testCases.length * 0.6); // 60%检查点通过即算对
+            yourAnswerText = answer.substring(0, 100) + (answer.length > 100 ? '...' : '');
+            correctAnswerText = '参考代码见解析';
+        } else if (q.type === 'design') {
+            const input = $('#quiz-design-input');
+            answer = input ? input.value.trim() : '';
+            if (!answer) { toast('请填写设计方案'); return; }
+            correct = answer.length >= 50; // 字数达标即算通过
+            yourAnswerText = answer.substring(0, 100) + (answer.length > 100 ? '...' : '');
+            correctAnswerText = q.modelAnswer ? q.modelAnswer.substring(0, 100) + '...' : '参考方案见解析';
+        }
+
         const resultArea = $('#quiz-result-area');
 
-        // 显示对错样式
-        $$('.quiz-option').forEach((el, i) => {
-            el.classList.remove('selected');
-            el.style.pointerEvents = 'none';
-            if (i === q.answer) el.classList.add('correct');
-            else if (i === answer && !correct) el.classList.add('wrong');
-        });
+        // 显示对错样式（选择题）
+        if (q.options) {
+            $$('.quiz-option').forEach((el, i) => {
+                el.classList.remove('selected');
+                el.style.pointerEvents = 'none';
+                const isCorrectOption = Array.isArray(q.answer) ? q.answer.includes(i) : i === q.answer;
+                if (isCorrectOption) el.classList.add('correct');
+                else {
+                    const isSelected = Array.isArray(answer) ? answer.includes(i) : i === answer;
+                    if (isSelected && !isCorrectOption) el.classList.add('wrong');
+                }
+            });
+        }
 
         resultArea.innerHTML = `
             <div class="quiz-result ${correct ? 'correct' : 'wrong'}">
                 <div class="quiz-result-title">${correct ? '回答正确！' : '回答错误'}</div>
                 <div>${q.explain || ''}</div>
+                ${q.modelAnswer ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--gray-300)"><strong>参考解答：</strong>${q.modelAnswer}</div>` : ''}
             </div>
         `;
 
         currentQuiz.answers.push({ questionId: q.id, correct, yourAnswer: answer });
         if (correct) currentQuiz.score++;
-        else currentQuiz.wrong.push({ questionId: q.id, question: q.question, yourAnswer: q.options[answer], correctAnswer: q.options[q.answer], knowledgePoint: currentQuiz.task.title });
+        else currentQuiz.wrong.push({ questionId: q.id, question: q.question, yourAnswer: yourAnswerText, correctAnswer: correctAnswerText, knowledgePoint: currentQuiz.task.title });
 
         // 更新按钮
         const footer = $('#quiz-modal-footer');
@@ -643,23 +837,62 @@
         const body = $('#exam-modal-body');
         const footer = $('#exam-modal-footer');
 
-        const typeMap = { single: '单选题', judge: '判断题', codefill: '代码填空', multi: '多选题' };
+        const typeMap = { single: '单选题', judge: '判断题', codefill: '代码填空', multi: '多选题', case: '案例分析', code: '代码实现', design: '设计题' };
 
         let content = '';
         if (q.type === 'single' || q.type === 'judge') {
             content = `<div class="exam-options">${q.options.map((opt, i) => `
-                <label class="exam-option ${examAnswers[q.id] === i ? 'selected' : ''}" data-qid="${q.id}" data-idx="${i}">
-                    <input type="radio" name="exam-${q.id}" value="${i}" ${examAnswers[q.id] === i ? 'checked' : ''}>
+                <label class="exam-option ${(examAnswers[q.id] === i) ? 'selected' : ''}" data-qid="${q.id}" data-idx="${i}">
+                    <input type="radio" name="exam-${q.id}" value="${i}" ${(examAnswers[q.id] === i) ? 'checked' : ''}>
                     <span>${String.fromCharCode(65 + i)}. ${opt}</span>
                 </label>
             `).join('')}</div>`;
+        } else if (q.type === 'multi' || q.type === 'case') {
+            const saved = Array.isArray(examAnswers[q.id]) ? examAnswers[q.id] : [];
+            content = `
+                ${q.caseText ? `<div class="case-text">${q.caseText}</div>` : ''}
+                <div class="exam-options">${q.options.map((opt, i) => `
+                    <label class="exam-option ${saved.includes(i) ? 'selected' : ''}" data-qid="${q.id}" data-idx="${i}">
+                        <input type="checkbox" name="exam-${q.id}" value="${i}" ${saved.includes(i) ? 'checked' : ''}>
+                        <span>${String.fromCharCode(65 + i)}. ${opt}</span>
+                    </label>
+                `).join('')}</div>
+            `;
         } else if (q.type === 'codefill') {
-            // 代码填空：简化为输入框
             content = `<div style="margin-top:12px">
                 <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">请按顺序填写空格答案，用逗号分隔：</p>
                 <input type="text" class="form-group input" id="exam-fill-${q.id}" placeholder="答案1, 答案2..." value="${examAnswers[q.id] || ''}" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:var(--radius)">
             </div>`;
+        } else if (q.type === 'code') {
+            content = `
+                <div class="code-question-area">
+                    <div class="starter-code"><pre><code>${q.starterCode}</code></pre></div>
+                    <textarea class="exam-textarea" id="exam-code-${q.id}" placeholder="请在此编写代码...">${examAnswers[q.id] || ''}</textarea>
+                    <div class="test-cases">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">评分检查点：</p>
+                        ${q.testCases.map(tc => `<div class="test-case-item">${tc.desc}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (q.type === 'design') {
+            content = `
+                <div class="design-question-area">
+                    <textarea class="exam-textarea" id="exam-design-${q.id}" placeholder="请在此输入你的设计方案...">${examAnswers[q.id] || ''}</textarea>
+                    <div class="design-criteria">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">评分标准（自评参考）：</p>
+                        ${q.criteria.map(c => `<div class="criteria-item">${c.item}（${c.weight}%）</div>`).join('')}
+                    </div>
+                </div>
+            `;
         }
+
+        // 认知标签
+        const tagHtml = (q.bloom || q.solo) ? `
+            <div class="question-tags">
+                ${q.bloom ? `<span class="q-tag bloom">${q.bloom}</span>` : ''}
+                ${q.solo ? `<span class="q-tag solo">${q.solo}</span>` : ''}
+            </div>
+        ` : '';
 
         body.innerHTML = `
             <div class="exam-question">
@@ -668,26 +901,65 @@
                     <span class="exam-q-type">${typeMap[q.type] || q.type}</span>
                 </div>
                 <div class="exam-question-text">${q.question}</div>
+                ${tagHtml}
                 ${content}
             </div>
         `;
 
-        // 选项点击
-        $$('.exam-option').forEach(el => {
-            el.addEventListener('click', () => {
-                const qid = el.dataset.qid;
-                const idx = parseInt(el.dataset.idx);
-                examAnswers[qid] = idx;
-                $$('.exam-option[data-qid="' + qid + '"]').forEach(o => o.classList.remove('selected'));
-                el.classList.add('selected');
-                el.querySelector('input').checked = true;
+        // 单选/判断选项点击
+        if (q.type === 'single' || q.type === 'judge') {
+            $$('.exam-option').forEach(el => {
+                el.addEventListener('click', () => {
+                    const qid = el.dataset.qid;
+                    const idx = parseInt(el.dataset.idx);
+                    examAnswers[qid] = idx;
+                    $$('.exam-option[data-qid="' + qid + '"]').forEach(o => o.classList.remove('selected'));
+                    el.classList.add('selected');
+                    el.querySelector('input').checked = true;
+                });
             });
-        });
+        }
+        // 多选/案例选项点击
+        else if (q.type === 'multi' || q.type === 'case') {
+            $$('.exam-option').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    const qid = el.dataset.qid;
+                    const idx = parseInt(el.dataset.idx);
+                    const cb = el.querySelector('input');
+                    cb.checked = !cb.checked;
+                    el.classList.toggle('selected', cb.checked);
+                    let current = Array.isArray(examAnswers[qid]) ? examAnswers[qid] : [];
+                    if (cb.checked) {
+                        if (!current.includes(idx)) current = [...current, idx];
+                    } else {
+                        current = current.filter(i => i !== idx);
+                    }
+                    examAnswers[qid] = current.sort((a, b) => a - b);
+                });
+            });
+        }
 
         // 填空输入
         const fillInput = $(`#exam-fill-${q.id}`);
         if (fillInput) {
             fillInput.addEventListener('input', (e) => {
+                examAnswers[q.id] = e.target.value;
+            });
+        }
+
+        // 代码输入
+        const codeInput = $(`#exam-code-${q.id}`);
+        if (codeInput) {
+            codeInput.addEventListener('input', (e) => {
+                examAnswers[q.id] = e.target.value;
+            });
+        }
+
+        // 设计输入
+        const designInput = $(`#exam-design-${q.id}`);
+        if (designInput) {
+            designInput.addEventListener('input', (e) => {
                 examAnswers[q.id] = e.target.value;
             });
         }
@@ -721,14 +993,39 @@
         test.questions.forEach(q => {
             const userAns = examAnswers[q.id];
             let isCorrect = false;
+            let yourAnswerText = '';
+            let correctAnswerText = '';
 
             if (q.type === 'single' || q.type === 'judge') {
                 isCorrect = userAns === q.answer;
+                yourAnswerText = userAns !== undefined ? q.options[userAns] : '未作答';
+                correctAnswerText = q.options[q.answer];
+            } else if (q.type === 'multi' || q.type === 'case') {
+                const userArr = Array.isArray(userAns) ? [...userAns].sort((a, b) => a - b) : [];
+                const expected = Array.isArray(q.answer) ? [...q.answer].sort((a, b) => a - b) : [q.answer];
+                isCorrect = JSON.stringify(userArr) === JSON.stringify(expected);
+                yourAnswerText = userArr.length > 0 ? userArr.map(i => q.options[i]).join(', ') : '未作答';
+                correctAnswerText = expected.map(i => q.options[i]).join(', ');
             } else if (q.type === 'codefill') {
-                // 简单字符串匹配（忽略空格）
                 const cleanUser = String(userAns || '').replace(/\s/g, '').toLowerCase();
                 const cleanAns = String(q.answer || '').replace(/\s/g, '').toLowerCase();
                 isCorrect = cleanUser === cleanAns;
+                yourAnswerText = userAns || '未作答';
+                correctAnswerText = q.answer;
+            } else if (q.type === 'code') {
+                const code = String(userAns || '');
+                let passed = 0;
+                q.testCases.forEach(tc => {
+                    if (code.includes(tc.check)) passed++;
+                });
+                isCorrect = passed >= Math.ceil(q.testCases.length * 0.6);
+                yourAnswerText = code.substring(0, 100) + (code.length > 100 ? '...' : '') || '未作答';
+                correctAnswerText = '参考代码见解析';
+            } else if (q.type === 'design') {
+                const design = String(userAns || '');
+                isCorrect = design.length >= 50;
+                yourAnswerText = design.substring(0, 100) + (design.length > 100 ? '...' : '') || '未作答';
+                correctAnswerText = q.modelAnswer ? q.modelAnswer.substring(0, 100) + '...' : '参考方案见解析';
             }
 
             answerList.push({ questionId: q.id, correct: isCorrect, yourAnswer: userAns });
@@ -737,8 +1034,8 @@
                 wrong.push({
                     questionId: q.id,
                     question: q.question,
-                    yourAnswer: userAns !== undefined ? (q.options ? q.options[userAns] : userAns) : '未作答',
-                    correctAnswer: q.options ? q.options[q.answer] : q.answer,
+                    yourAnswer: yourAnswerText,
+                    correctAnswer: correctAnswerText,
                     knowledgePoint: test.title
                 });
             }
@@ -821,7 +1118,6 @@
         // 成绩统计
         const scoreStats = $('#score-stats');
         let scoreHtml = '<table class="score-table"><tr><th>测评项目</th><th>最高分</th><th>次数</th></tr>';
-        // 小测
         COURSE_DATA.projects.forEach(p => {
             p.tasks.forEach(t => {
                 const r = data.quizRecords[t.id];
@@ -830,7 +1126,6 @@
                 }
             });
         });
-        // 单元测
         COURSE_DATA.projects.forEach(p => {
             const r = data.unitTestRecords[p.id];
             if (r) {
@@ -856,30 +1151,67 @@
             `).join('');
         }
 
-        // 学习效果分析
+        // 学习效果分析（专业报告区）
         const analysis = $('#learning-analysis');
-        // 计算各维度得分（简化）
-        const dims = [
-            { name: '语法基础', score: Math.min(100, stats.overallProgress + 10) },
-            { name: '数据处理', score: Math.min(100, (data.unitTestRecords['p3']?.bestScore || 0)) },
-            { name: '分析应用', score: Math.min(100, (data.unitTestRecords['p4']?.bestScore || 0)) },
-            { name: '可视化', score: Math.min(100, (data.unitTestRecords['p5']?.bestScore || 0)) }
-        ];
-        const maxScore = Math.max(...dims.map(d => d.score), 1);
+        const hasData = stats.testCount > 0 || data.cognitiveProfile.lastUpdated;
+
+        if (!hasData) {
+            analysis.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-title">暂无分析数据</div>
+                    <div class="empty-state-desc">完成小测和单元测试后，将生成多维度学习效果诊断报告</div>
+                </div>
+            `;
+            return;
+        }
+
         analysis.innerHTML = `
-            <div class="analysis-chart">
-                ${dims.map(d => `
-                    <div class="chart-bar-wrapper">
-                        <div class="chart-bar-value">${d.score}</div>
-                        <div class="chart-bar" style="height:${(d.score / maxScore) * 120}px"></div>
-                        <div class="chart-bar-label">${d.name}</div>
+            <div id="report-container">
+                <div class="report-header">
+                    <div class="report-title">学习效果诊断报告</div>
+                    <div class="report-meta">
+                        ${data.userInfo.name || '学员'} · ${data.userInfo.className || '-'} · 生成于 ${new Date().toLocaleDateString('zh-CN')}
                     </div>
-                `).join('')}
-            </div>
-            <div style="margin-top:16px;font-size:13px;color:var(--gray-500)">
-                综合完成率：${stats.overallProgress}% · 错题总数：${stats.wrongCount} · 学习时长：${(stats.learnTime/60).toFixed(1)}小时
+                </div>
+                <div class="share-btn-group">
+                    <button class="btn-sm btn-secondary" onclick="ReportExportImage.exportReport()">导出图片</button>
+                    <button class="btn-sm btn-secondary" onclick="ReportExportPDF.exportReport()">导出PDF</button>
+                    <button class="btn-sm btn-secondary" onclick="ShareLink.copyToClipboard()">复制分享链接</button>
+                    <button class="btn-sm btn-primary" onclick="Certificate.show()">学习证书</button>
+                </div>
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <h4>布鲁姆认知层次雷达</h4>
+                        <div class="chart-container" id="chart-bloom-radar"></div>
+                    </div>
+                    <div class="analysis-card">
+                        <h4>SOLO学习层次分布</h4>
+                        <div class="chart-container" id="chart-solo-distribution"></div>
+                    </div>
+                    <div class="analysis-card full-width">
+                        <h4>知识掌握热力图</h4>
+                        <div class="chart-container" id="chart-knowledge-heatmap"></div>
+                    </div>
+                    <div class="analysis-card full-width">
+                        <h4>学习趋势</h4>
+                        <div class="chart-container" id="chart-learning-trend"></div>
+                    </div>
+                    <div class="analysis-card full-width">
+                        <h4>能力诊断报告</h4>
+                        <div id="chart-diagnosis-report"></div>
+                    </div>
+                </div>
             </div>
         `;
+
+        // 渲染各分析图表（延迟确保DOM已插入）
+        setTimeout(() => {
+            if (typeof BloomRadar !== 'undefined') BloomRadar.render('chart-bloom-radar');
+            if (typeof SoloDistribution !== 'undefined') SoloDistribution.render('chart-solo-distribution');
+            if (typeof KnowledgeHeatmap !== 'undefined') KnowledgeHeatmap.render('chart-knowledge-heatmap');
+            if (typeof LearningTrend !== 'undefined') LearningTrend.render('chart-learning-trend');
+            if (typeof DiagnosisReport !== 'undefined') DiagnosisReport.render('chart-diagnosis-report');
+        }, 100);
     }
 
     // ===== 系统设置 =====

@@ -8,6 +8,7 @@ const STORAGE_KEY = 'embd_learning_data';
 // 默认数据结构
 function getDefaultData() {
     return {
+        dataVersion: 2,
         userInfo: { name: '', className: '', studentId: '' },
         progress: {},
         quizRecords: {},      // { taskId: { score, bestScore, attempts, answers: [] } }
@@ -17,8 +18,34 @@ function getDefaultData() {
         lastActiveTime: null,
         taskQuizStatus: {},   // { taskId: boolean } 是否完成小测
         taskLearned: {},      // { taskId: boolean } 是否标记已学
-        timestamps: {}        // { taskId: finishTime }
+        timestamps: {},       // { taskId: finishTime }
+        cognitiveProfile: {
+            bloomScores: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0, B6: 0 },
+            bloomTotals: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0, B6: 0 },
+            soloScores:  { S1: 0, S2: 0, S3: 0, S4: 0 },
+            soloTotals:  { S1: 0, S2: 0, S3: 0, S4: 0 },
+            knowledgeScores: {},  // { tag: { correct, total } }
+            lastUpdated: null
+        }
     };
+}
+
+// 数据迁移 V1 -> V2
+function migrateData(data) {
+    const version = data.dataVersion || 1;
+    if (version < 2) {
+        data.cognitiveProfile = {
+            bloomScores: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0, B6: 0 },
+            bloomTotals: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0, B6: 0 },
+            soloScores:  { S1: 0, S2: 0, S3: 0, S4: 0 },
+            soloTotals:  { S1: 0, S2: 0, S3: 0, S4: 0 },
+            knowledgeScores: {},
+            lastUpdated: null
+        };
+        data.legacyRecordWarning = true;
+        data.dataVersion = 2;
+    }
+    return data;
 }
 
 // 读取数据
@@ -28,7 +55,8 @@ function loadData() {
         if (raw) {
             const parsed = JSON.parse(raw);
             // 合并默认结构，防止版本升级后缺少字段
-            return { ...getDefaultData(), ...parsed };
+            const merged = { ...getDefaultData(), ...parsed };
+            return migrateData(merged);
         }
     } catch (e) {
         console.error('加载数据失败:', e);
@@ -44,6 +72,73 @@ function saveData(data) {
         console.error('保存数据失败:', e);
         alert('本地存储空间不足，请导出数据后重置学习进度');
     }
+}
+
+// 题目标签推断（旧题无标签时降级）
+function inferQuestionTags(question) {
+    const type = question.type || 'single';
+    let bloom = question.bloom;
+    let solo = question.solo;
+    let tags = question.knowledgeTags || [];
+
+    if (!bloom || !solo) {
+        if (type === 'judge') {
+            bloom = bloom || 'B2';
+            solo = solo || 'S1';
+        } else if (type === 'codefill') {
+            bloom = bloom || 'B3';
+            solo = solo || 'S1';
+        } else if (type === 'multi') {
+            bloom = bloom || 'B2';
+            solo = solo || 'S2';
+        } else if (type === 'case') {
+            bloom = bloom || 'B4';
+            solo = solo || 'S3';
+        } else if (type === 'code') {
+            bloom = bloom || 'B6';
+            solo = solo || 'S4';
+        } else if (type === 'design') {
+            bloom = bloom || 'B6';
+            solo = solo || 'S4';
+        } else {
+            // single 纯概念题
+            bloom = bloom || 'B1';
+            solo = solo || 'S1';
+        }
+    }
+    return { bloom, solo, knowledgeTags: tags };
+}
+
+// 更新认知画像
+function updateCognitiveProfile(questionList, answers, score, total) {
+    const cp = _data.cognitiveProfile;
+    questionList.forEach((q, idx) => {
+        const tags = inferQuestionTags(q);
+        const isCorrect = Array.isArray(q.answer)
+            ? JSON.stringify(q.answer.sort()) === JSON.stringify((answers[idx] || []).sort())
+            : q.answer === answers[idx];
+
+        // 更新布鲁姆维度
+        cp.bloomTotals[tags.bloom] = (cp.bloomTotals[tags.bloom] || 0) + 1;
+        if (isCorrect) cp.bloomScores[tags.bloom] = (cp.bloomScores[tags.bloom] || 0) + 1;
+
+        // 更新SOLO维度
+        cp.soloTotals[tags.solo] = (cp.soloTotals[tags.solo] || 0) + 1;
+        if (isCorrect) cp.soloScores[tags.solo] = (cp.soloScores[tags.solo] || 0) + 1;
+
+        // 更新知识点维度
+        tags.knowledgeTags.forEach(tag => {
+            if (!cp.knowledgeScores[tag]) cp.knowledgeScores[tag] = { correct: 0, total: 0 };
+            cp.knowledgeScores[tag].total++;
+            if (isCorrect) cp.knowledgeScores[tag].correct++;
+        });
+    });
+    cp.lastUpdated = new Date().toISOString();
+}
+
+// 获取认知画像
+function getCognitiveProfile() {
+    return _data.cognitiveProfile;
 }
 
 // 获取当前数据（引用）
@@ -88,12 +183,22 @@ function recordQuiz(taskId, score, total, answers, wrongList) {
 
     // 记录错题
     wrongList.forEach(w => {
-        // 去重：同题不重复记录
         const idx = _data.wrongQuestions.findIndex(q => q.questionId === w.questionId && q.taskId === taskId);
         if (idx === -1) {
             _data.wrongQuestions.push({ ...w, taskId, timestamp: new Date().toISOString() });
         }
     });
+
+    // 更新认知画像
+    const projects = window.COURSE_DATA?.projects || [];
+    for (const p of projects) {
+        for (const t of p.tasks) {
+            if (t.id === taskId && t.quiz) {
+                updateCognitiveProfile(t.quiz, answers, score, total);
+                break;
+            }
+        }
+    }
 
     persist();
     return percentage;
@@ -125,6 +230,12 @@ function recordUnitTest(projectId, score, total, answers, wrongList, durationSec
     // 如果及格，标记项目完成
     if (percentage >= 60) {
         _data.progress[projectId] = { completed: true, completedAt: new Date().toISOString() };
+    }
+
+    // 更新认知画像
+    const unitTest = window.COURSE_DATA?.unitTests?.[projectId];
+    if (unitTest && unitTest.questions) {
+        updateCognitiveProfile(unitTest.questions, answers, score, total);
     }
 
     persist();
@@ -357,5 +468,7 @@ window.Storage = {
     exportToExcel,
     importFromJSON,
     resetAll,
-    getStats
+    getStats,
+    getCognitiveProfile,
+    inferQuestionTags
 };
