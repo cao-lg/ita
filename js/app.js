@@ -759,24 +759,34 @@
     // ===== 掌握度矫正练习 =====
     let currentMasterySession = null;
 
-    function startMasteryCorrection(task, wrongItems) {
+    function startMasteryCorrection(task, wrongItems, round) {
         if (typeof MasteryEngine === 'undefined') { toast('掌握学习引擎未加载'); return; }
-        const recommendations = MasteryEngine.recommendVariants(wrongItems);
+
+        // 过滤掉需要回退学习的题目
+        const correctable = wrongItems.filter(w =>
+            !MasteryEngine.needsFallbackLearning(w.questionId));
+        if (correctable.length === 0) {
+            toast('所有错题已触发回退学习，请先返回学习材料重新学习');
+            return;
+        }
+
+        const recommendations = MasteryEngine.recommendVariants(correctable);
         if (recommendations.recommendations.length === 0) {
             toast('暂无可用的变式题，请稍后再试');
             return;
         }
 
+        const currentRound = round || 1;
         currentMasterySession = {
             task, originalWrong: wrongItems,
             recommendations: recommendations.recommendations,
             unmatched: recommendations.unmatched,
-            currentRound: 1,
+            currentRound,
             index: 0, score: 0, answers: []
         };
 
         const title = $('#quiz-modal-title');
-        if (title) title.textContent = '掌握度矫正练习 (第1轮)';
+        if (title) title.textContent = `掌握度矫正练习 (第${currentRound}轮)`;
         renderMasteryQuestion();
     }
 
@@ -938,46 +948,125 @@
         });
 
         const allMastered = topicResults.every(t => t.mastered);
+        const hasFallback = topicResults.some(t => t.needsFallback);
         const totalQ = session.recommendations.length;
         const correctQ = session.score;
+
+        // 判定轨道说明
+        const trackLabels = {
+            A: '累计正确率达标',
+            B: '连续2题正确'
+        };
 
         $('#quiz-modal-body').innerHTML = `
             <div class="mastery-report">
                 <div class="mastery-report-header">
-                    <div style="font-size:36px">${allMastered ? '🎯' : '📈'}</div>
-                    <h3>${allMastered ? '全部掌握！' : '矫正练习完成'}</h3>
+                    <div style="font-size:36px">${allMastered ? '🎯' : (hasFallback ? '🔄' : '📈')}</div>
+                    <h3>${allMastered ? '全部掌握！' : (hasFallback ? '需要回退学习' : '矫正练习完成')}</h3>
                     <p>第${session.currentRound}轮 · 答对 ${correctQ} / ${totalQ}</p>
                 </div>
+
+                ${hasFallback ? `
+                    <div class="mastery-fallback-alert">
+                        <div class="mastery-fallback-title">⚠️ 回退学习建议</div>
+                        <div class="mastery-fallback-desc">
+                            部分知识点经过多轮矫正仍未掌握，继续做平行题效果有限。
+                            建议返回学习材料，用不同方式重新学习后再来测试。
+                        </div>
+                        <div class="mastery-fallback-theory">
+                            理论依据：Bloom掌握学习要求矫正活动必须与初次教学"qualitatively different"（Guskey, 2007）
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="mastery-topic-list">
-                    ${topicResults.map(t => `
-                        <div class="mastery-topic-item ${t.mastered ? 'mastered' : 'unmastered'}">
+                    ${topicResults.map(t => {
+                        const threshold = t.totalAttempts >= 5 ? 80 : 67;
+                        const trackInfo = t.mastered ? `<span class="mastery-track-badge track-${t.masteryTrack}">${trackLabels[t.masteryTrack]}</span>` : '';
+                        const fallbackInfo = t.needsFallback ? `<div class="mastery-fallback-reason">${t.fallbackReason}</div>` : '';
+                        const consecInfo = t.consecutiveCorrect > 0
+                            ? `<span class="mastery-consec-badge">连续${t.consecutiveCorrect}对</span>`
+                            : (t.consecutiveWrong > 0 ? `<span class="mastery-consec-badge wrong">连续${t.consecutiveWrong}错</span>` : '');
+                        return `
+                        <div class="mastery-topic-item ${t.mastered ? 'mastered' : (t.needsFallback ? 'fallback' : 'unmastered')}">
                             <div class="mastery-topic-info">
                                 <span class="mastery-topic-tag">${t.tag}</span>
                                 <span class="q-tag bloom">${t.bloom}</span>
+                                ${consecInfo}
                             </div>
                             <div class="mastery-topic-status">
                                 <span class="mastery-accuracy">${t.accuracy}%</span>
-                                <span class="mastery-label ${t.mastered ? '' : 'style="background:var(--warning);color:white"'}">${t.mastered ? '已掌握' : '未掌握'}</span>
+                                ${trackInfo}
+                                <span class="mastery-label ${t.mastered ? '' : (t.needsFallback ? 'fallback' : 'style="background:var(--warning);color:white"')}">${t.mastered ? '已掌握' : (t.needsFallback ? '需回退' : '未掌握')}</span>
                             </div>
                             <div class="mastery-progress-bar">
-                                <div class="mastery-progress-fill" style="width:${t.accuracy}%;background:${t.mastered ? 'var(--success)' : 'var(--warning)'}"></div>
-                                <div class="mastery-threshold-line" style="left:80%"></div>
+                                <div class="mastery-progress-fill" style="width:${t.accuracy}%;background:${t.mastered ? 'var(--success)' : (t.needsFallback ? 'var(--danger)' : 'var(--warning)')}"></div>
+                                <div class="mastery-threshold-line" style="left:${threshold}%"></div>
+                                <div class="mastery-threshold-label">${threshold}%</div>
                             </div>
+                            ${fallbackInfo}
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
+
+                ${!allMastered && !hasFallback ? `
+                    <div class="mastery-continue-hint">
+                        💡 未全部掌握，可继续矫正练习（剩余轮次：${MasteryEngine.CONFIG.MAX_ROUNDS - session.currentRound}）
+                    </div>
+                ` : ''}
             </div>
         `;
 
-        $('#quiz-modal-footer').innerHTML = `
-            <button class="btn-primary" id="mastery-done-btn">完成</button>
-        `;
+        // 按钮区
+        const footer = $('#quiz-modal-footer');
+        if (hasFallback) {
+            footer.innerHTML = `
+                <button class="btn-secondary" id="mastery-done-btn">关闭</button>
+                <button class="btn-primary" id="mastery-fallback-btn">返回学习材料</button>
+            `;
+            $('#mastery-fallback-btn').addEventListener('click', () => {
+                const task = session.task;
+                currentMasterySession = null;
+                closeAllModals();
+                if (task && task.id) {
+                    loadTask(task.id);
+                } else {
+                    renderProjectPage();
+                }
+            });
+        } else if (!allMastered && session.currentRound < MasteryEngine.CONFIG.MAX_ROUNDS) {
+            footer.innerHTML = `
+                <button class="btn-secondary" id="mastery-done-btn">稍后再练</button>
+                <button class="btn-primary" id="mastery-continue-btn">继续矫正</button>
+            `;
+            $('#mastery-continue-btn').addEventListener('click', () => {
+                // 检查哪些题目还能继续矫正
+                const continueable = session.originalWrong.filter(w =>
+                    MasteryEngine.canContinueCorrection(w.questionId));
+                if (continueable.length === 0) {
+                    toast('所有题目已达到矫正上限');
+                    return;
+                }
+                const nextRound = session.currentRound + 1;
+                currentMasterySession = null;
+                startMasteryCorrection(session.task, continueable, nextRound);
+            });
+        } else {
+            footer.innerHTML = `
+                <button class="btn-primary" id="mastery-done-btn">完成</button>
+            `;
+        }
 
-        $('#mastery-done-btn').addEventListener('click', () => {
+        $('#mastery-done-btn')?.addEventListener('click', () => {
             const task = session.task;
             currentMasterySession = null;
             closeAllModals();
-            loadTask(task.id);
+            if (task && task.id) {
+                loadTask(task.id);
+            } else {
+                renderProjectPage();
+            }
         });
 
         // 恢复弹窗标题
@@ -1379,13 +1468,21 @@
         if (data.wrongQuestions.length === 0) {
             wrongContainer.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无错题</div><div class="empty-state-desc">继续保持！</div></div>';
         } else {
-            wrongContainer.innerHTML = data.wrongQuestions.slice(0, 20).map((w, i) => `
-                <div class="wrong-q-item ${w.mastered ? 'mastered' : ''}">
+            wrongContainer.innerHTML = data.wrongQuestions.slice(0, 20).map((w, i) => {
+                const needsFallback = typeof MasteryEngine !== 'undefined' && MasteryEngine.needsFallbackLearning(w.questionId);
+                const canCorrect = !w.mastered && !needsFallback && typeof MasteryEngine !== 'undefined' && MasteryEngine.canContinueCorrection(w.questionId);
+                const badge = w.mastered
+                    ? '<span class="mastery-badge-small mastered">已掌握</span>'
+                    : needsFallback
+                        ? '<span class="mastery-badge-small unmastered">需回退学习</span>'
+                        : (w.correctionHistory?.length > 0
+                            ? '<span class="mastery-badge-small correcting">矫正中</span>'
+                            : '<span class="mastery-badge-small unmastered">待矫正</span>');
+                return `
+                <div class="wrong-q-item ${w.mastered ? 'mastered' : ''} ${needsFallback ? 'fallback' : ''}">
                     <div class="wrong-q-title">
                         <span>${i+1}. ${w.question}</span>
-                        ${w.mastered ? '<span class="mastery-badge-small mastered">已掌握</span>'
-                            : (w.correctionHistory?.length > 0 ? '<span class="mastery-badge-small correcting">矫正中</span>'
-                            : '<span class="mastery-badge-small unmastered">待矫正</span>')}
+                        ${badge}
                     </div>
                     <div class="wrong-q-answer">
                         <span class="wrong">你的答案：${w.yourAnswer}</span> ·
@@ -1395,10 +1492,12 @@
                         ${w.bloom ? `<span class="q-tag bloom">${w.bloom}</span>` : ''}
                         ${(w.knowledgeTags || []).slice(0, 2).map(t => `<span class="q-tag knowledge">${t}</span>`).join('')}
                         ${w.correctionHistory?.length > 0 ? `<span style="font-size:12px;color:var(--gray-400);margin-left:4px">已矫正${w.correctionHistory.length}轮</span>` : ''}
-                        ${!w.mastered && typeof MasteryEngine !== 'undefined' ? '<button class="btn-sm btn-warning wrong-correct-btn" style="margin-left:auto">矫正练习</button>' : ''}
+                        ${canCorrect ? '<button class="btn-sm btn-warning wrong-correct-btn" style="margin-left:auto">矫正练习</button>' : ''}
+                        ${needsFallback ? '<button class="btn-sm btn-secondary wrong-learn-btn" style="margin-left:auto">回退学习</button>' : ''}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
 
             // 绑定单题矫正按钮
             wrongContainer.querySelectorAll('.wrong-correct-btn').forEach(btn => {
@@ -1421,6 +1520,25 @@
                     const title = $('#quiz-modal-title');
                     if (title) title.textContent = '单题矫正练习';
                     renderMasteryQuestion();
+                });
+            });
+
+            // 绑定回退学习按钮
+            wrongContainer.querySelectorAll('.wrong-learn-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = e.target.closest('.wrong-q-item');
+                    const idx = Array.from(wrongContainer.children).indexOf(item);
+                    const wq = data.wrongQuestions[idx];
+                    if (!wq) return;
+                    const reason = MasteryEngine.getFallbackReason(wq.questionId);
+                    const task = COURSE_DATA.projects.flatMap(p => p.tasks).find(t => t.id === wq.taskId);
+                    if (task) {
+                        toast(reason || '建议回退到学习材料重新学习');
+                        loadTask(task.id);
+                    } else {
+                        toast('请返回对应项目的学习材料重新学习');
+                    }
                 });
             });
         }

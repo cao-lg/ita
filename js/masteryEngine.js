@@ -4,10 +4,14 @@
  */
 const MasteryEngine = {
     CONFIG: {
-        MASTERY_THRESHOLD: 80,
-        MAX_ROUNDS: 3,
-        FALLBACK_BLOOM_RANGE: 1,
-        MIN_SAMPLE_FOR_MASTERY: 3
+        MASTERY_THRESHOLD: 80,           // 轨道A：题目池≥5时的正确率阈值
+        MASTERY_THRESHOLD_SMALL: 67,     // 轨道A：题目池3-4时的修正阈值（允许错1道）
+        CONSECUTIVE_CORRECT_REQ: 2,      // 轨道B：连续正确数要求
+        MIN_SAMPLE_FOR_MASTERY: 3,       // 最低样本量（Spearman-Brown α≥0.50）
+        MAX_ROUNDS: 5,                   // 最大矫正轮次（支持连续2对的 worst case: 错错对对=4轮）
+        FALLBACK_CONSECUTIVE_WRONG: 3,   // 连续错误触发回退学习
+        FALLBACK_LOW_ACCURACY: 50,      // 低正确率触发回退学习
+        FALLBACK_BLOOM_RANGE: 1
     },
 
     _indexCache: null,
@@ -153,7 +157,12 @@ const MasteryEngine = {
         const state = Storage.getData().masteryState || {};
         const ms = state[key];
         if (!ms || ms.totalAttempts === 0) {
-            return { totalAttempts: 0, correctCount: 0, accuracy: 0, mastered: false, rounds: [] };
+            return {
+                totalAttempts: 0, correctCount: 0, accuracy: 0,
+                mastered: false, consecutiveCorrect: 0, consecutiveWrong: 0,
+                needsFallback: false, fallbackReason: null, masteryTrack: null,
+                rounds: []
+            };
         }
         return { ...ms };
     },
@@ -173,10 +182,11 @@ const MasteryEngine = {
         const state = data.masteryState || {};
         const entries = Object.values(state).filter(ms => ms.totalAttempts > 0);
         const mastered = entries.filter(ms => ms.mastered).length;
-        const inProgress = entries.filter(ms => !ms.mastered && ms.rounds.length > 0).length;
-        const notStarted = Math.max(0, entries.length - mastered - inProgress);
+        const inProgress = entries.filter(ms => !ms.mastered && !ms.needsFallback && ms.rounds.length > 0).length;
+        const needsFallback = entries.filter(ms => ms.needsFallback).length;
+        const notStarted = Math.max(0, entries.length - mastered - inProgress - needsFallback);
         const overallRate = entries.length > 0 ? Math.round((mastered / entries.length) * 100) : 0;
-        return { total: entries.length, mastered, inProgress, notStarted, overallRate };
+        return { total: entries.length, mastered, inProgress, needsFallback, notStarted, overallRate };
     },
 
     submitCorrectionRound(wrongId, variantId, correct) {
@@ -226,7 +236,37 @@ const MasteryEngine = {
         if (!wq) return false;
         if (wq.mastered) return false;
         if ((wq.correctionHistory || []).length >= this.CONFIG.MAX_ROUNDS) return false;
+
+        // 检查该知识点是否已触发回退学习
+        const tags = wq.knowledgeTags || ['综合'];
+        const bloom = wq.bloom || 'B1';
+        const key = this._makeKey(tags[0], bloom);
+        const state = Storage.getMasteryState()[key];
+        if (state && state.needsFallback) return false;
+
         return true;
+    },
+
+    // 检查是否需要回退学习
+    needsFallbackLearning(questionId) {
+        const wq = Storage.getData().wrongQuestions.find(w => w.questionId === questionId);
+        if (!wq) return false;
+        const tags = wq.knowledgeTags || ['综合'];
+        const bloom = wq.bloom || 'B1';
+        const key = this._makeKey(tags[0], bloom);
+        const state = Storage.getMasteryState()[key];
+        return state && state.needsFallback;
+    },
+
+    // 获取回退学习原因
+    getFallbackReason(questionId) {
+        const wq = Storage.getData().wrongQuestions.find(w => w.questionId === questionId);
+        if (!wq) return null;
+        const tags = wq.knowledgeTags || ['综合'];
+        const bloom = wq.bloom || 'B1';
+        const key = this._makeKey(tags[0], bloom);
+        const state = Storage.getMasteryState()[key];
+        return state ? state.fallbackReason : null;
     }
 };
 

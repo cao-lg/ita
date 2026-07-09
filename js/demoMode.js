@@ -84,21 +84,16 @@ const DemoMode = {
                 lastUpdated: new Date().toISOString()
             },
             masteryState: {
-                masteredTopics: ['Python基础', '数据获取', 'Pandas'],
-                correctingTopics: ['数据清洗', '数据分析'],
-                unmasteredTopics: ['财务指标', '可视化', 'Matplotlib', 'Pyecharts', '综合应用'],
-                topicStats: {
-                    'Python基础': { correct: 9, total: 11, accuracy: 82, threshold: 80, status: 'mastered' },
-                    '数据获取': { correct: 7, total: 9, accuracy: 78, threshold: 75, status: 'mastered' },
-                    'Pandas': { correct: 8, total: 10, accuracy: 80, threshold: 80, status: 'mastered' },
-                    '数据清洗': { correct: 7, total: 9, accuracy: 78, threshold: 80, status: 'correcting' },
-                    '数据分析': { correct: 6, total: 9, accuracy: 67, threshold: 80, status: 'correcting' },
-                    '财务指标': { correct: 5, total: 8, accuracy: 63, threshold: 80, status: 'unmastered' },
-                    '可视化': { correct: 6, total: 8, accuracy: 75, threshold: 80, status: 'unmastered' },
-                    'Matplotlib': { correct: 5, total: 7, accuracy: 71, threshold: 80, status: 'unmastered' },
-                    'Pyecharts': { correct: 4, total: 6, accuracy: 67, threshold: 80, status: 'unmastered' },
-                    '综合应用': { correct: 4, total: 6, accuracy: 67, threshold: 80, status: 'unmastered' }
-                }
+                'Python基础__B1': { totalAttempts: 5, correctCount: 4, accuracy: 80, mastered: true, masteredAt: new Date(Date.now() - 86400000).toISOString(), consecutiveCorrect: 1, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: 'A', rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                'Python基础__B2': { totalAttempts: 3, correctCount: 3, accuracy: 100, mastered: true, masteredAt: new Date(Date.now() - 43200000).toISOString(), consecutiveCorrect: 3, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: 'B', rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '数据获取__B1': { totalAttempts: 4, correctCount: 3, accuracy: 75, mastered: false, masteredAt: null, consecutiveCorrect: 1, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: null, rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                'Pandas__B1': { totalAttempts: 5, correctCount: 4, accuracy: 80, mastered: true, masteredAt: new Date(Date.now() - 72000000).toISOString(), consecutiveCorrect: 2, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: 'B', rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                'Pandas__B2': { totalAttempts: 3, correctCount: 2, accuracy: 67, mastered: true, masteredAt: new Date(Date.now() - 36000000).toISOString(), consecutiveCorrect: 2, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: 'B', rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '数据清洗__B2': { totalAttempts: 4, correctCount: 2, accuracy: 50, mastered: false, masteredAt: null, consecutiveCorrect: 0, consecutiveWrong: 1, needsFallback: false, fallbackReason: null, masteryTrack: null, rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '数据分析__B1': { totalAttempts: 3, correctCount: 1, accuracy: 33, mastered: false, masteredAt: null, consecutiveCorrect: 0, consecutiveWrong: 3, needsFallback: true, fallbackReason: '连续3题错误，平行题矫正未奏效，建议回退到学习材料重新学习', masteryTrack: null, rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '财务指标__B1': { totalAttempts: 3, correctCount: 2, accuracy: 67, mastered: true, masteredAt: new Date(Date.now() - 21600000).toISOString(), consecutiveCorrect: 2, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: 'B', rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '可视化__B1': { totalAttempts: 4, correctCount: 3, accuracy: 75, mastered: false, masteredAt: null, consecutiveCorrect: 1, consecutiveWrong: 0, needsFallback: false, fallbackReason: null, masteryTrack: null, rounds: [], usedVariantIds: [], sourceWrongIds: [] },
+                '综合应用__B1': { totalAttempts: 3, correctCount: 1, accuracy: 33, mastered: false, masteredAt: null, consecutiveCorrect: 0, consecutiveWrong: 2, needsFallback: false, fallbackReason: null, masteryTrack: null, rounds: [], usedVariantIds: [], sourceWrongIds: [] }
             }
         };
 

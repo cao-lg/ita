@@ -76,6 +76,9 @@ function migrateData(data) {
                         data.masteryState[key] = {
                             totalAttempts: 0, correctCount: 0, accuracy: 0,
                             mastered: false, masteredAt: null,
+                            consecutiveCorrect: 0, consecutiveWrong: 0,
+                            needsFallback: false, fallbackReason: null,
+                            masteryTrack: null,
                             rounds: [], usedVariantIds: [], sourceWrongIds: []
                         };
                     }
@@ -528,25 +531,71 @@ function updateMasteryStatus(key, roundData) {
         _data.masteryState[key] = {
             totalAttempts: 0, correctCount: 0, accuracy: 0,
             mastered: false, masteredAt: null,
+            consecutiveCorrect: 0, consecutiveWrong: 0,
+            needsFallback: false, fallbackReason: null,
+            masteryTrack: null,
             rounds: [], usedVariantIds: [], sourceWrongIds: []
         };
     }
     const state = _data.masteryState[key];
+    const isCorrect = roundData.correctCount > 0;
+
     state.totalAttempts += roundData.totalCount;
     state.correctCount += roundData.correctCount;
     state.accuracy = state.totalAttempts > 0
         ? Math.round((state.correctCount / state.totalAttempts) * 100) : 0;
-    // 最低样本量检查：不足3次不判定为掌握
-    state.mastered = state.totalAttempts >= 3 && state.accuracy >= 80;
+
+    // 连续正确/错误计数（排除运气成分的核心机制）
+    if (isCorrect) {
+        state.consecutiveCorrect++;
+        state.consecutiveWrong = 0;
+    } else {
+        state.consecutiveWrong++;
+        state.consecutiveCorrect = 0;
+    }
+
+    // ===== 双轨掌握判定 =====
+    // 轨道A：修正版累计正确率（动态阈值，避免小样本退化）
+    //   题目池≥5时要求80%；3-4题时要求67%（允许错1道）
+    //   理论依据：Bloom(1968), Guskey(2007) + 整数离散性修正
+    const trackA = state.totalAttempts >= 5
+        ? state.accuracy >= 80
+        : (state.totalAttempts >= 3 && state.accuracy >= 67);
+
+    // 轨道B：连续2题正确（行为分析习得标准）
+    //   理论依据：PMC(2021) 连续正确响应标准，排除"错错对"的运气成分
+    //   单选4选项连续2题纯猜概率仅6.25%，判断题25%，可接受
+    const trackB = state.consecutiveCorrect >= 2;
+
+    // 最低样本量：不足3次不判定（信度不足，Spearman-Brown α<0.50）
+    state.mastered = (trackA || trackB) && state.totalAttempts >= 3;
+    state.masteryTrack = state.mastered ? (trackB ? 'B' : 'A') : null;
+
     if (state.mastered && !state.masteredAt) {
         state.masteredAt = new Date().toISOString();
     }
+
+    // ===== 回退学习触发器 =====
+    // 条件1：连续3题错误 → 当前教学方式未奏效，需换方式
+    //   理论依据：Guskey(2007) 矫正必须"qualitatively different"
+    // 条件2：3次以上尝试正确率<50% → 理解存在根本性缺陷
+    if (!state.mastered && !state.needsFallback) {
+        if (state.consecutiveWrong >= 3) {
+            state.needsFallback = true;
+            state.fallbackReason = '连续3题错误，平行题矫正未奏效，建议回退到学习材料重新学习';
+        } else if (state.totalAttempts >= 3 && state.accuracy < 50) {
+            state.needsFallback = true;
+            state.fallbackReason = `${state.totalAttempts}次尝试正确率仅${state.accuracy}%，理解存在根本性缺陷，建议回退学习`;
+        }
+    }
+
     state.rounds.push({
         round: state.rounds.length + 1,
         date: new Date().toISOString(),
         questionIds: roundData.questionIds || [],
         correctCount: roundData.correctCount,
-        totalCount: roundData.totalCount
+        totalCount: roundData.totalCount,
+        correct: isCorrect
     });
     if (roundData.variantIds) {
         state.usedVariantIds.push(...roundData.variantIds);
