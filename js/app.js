@@ -723,6 +723,8 @@
         const isDemo = DemoMode.isActive();
         const percentage = isDemo ? Math.round((score / total) * 100) : Storage.recordQuiz(task.id, score, total, answers, wrong);
 
+        const hasCorrectableWrong = wrong.length > 0 && !isDemo && typeof MasteryEngine !== 'undefined';
+
         $('#quiz-modal-body').innerHTML = `
             <div style="text-align:center;padding:20px">
                 <div style="font-size:48px;margin-bottom:12px">${percentage >= 60 ? '🎉' : '📝'}</div>
@@ -730,20 +732,257 @@
                 <p style="font-size:24px;font-weight:700;color:${percentage >= 60 ? 'var(--success)' : 'var(--warning)'}">${percentage}分</p>
                 <p style="color:var(--gray-500)">答对 ${score} / ${total} 题</p>
                 ${percentage < 60 ? '<p style="color:var(--danger);margin-top:8px">建议重新学习本任务内容</p>' : ''}
+                ${hasCorrectableWrong ? `
+                    <div class="correction-prompt">
+                        <div style="font-weight:600;color:#92400e;margin-bottom:6px">错题矫正练习 (${wrong.length}题待矫正)</div>
+                        <p style="font-size:13px;color:var(--gray-600)">系统将推荐同知识点同认知层级的平行变式题，帮助您达到掌握标准(80%正确率)</p>
+                    </div>
+                ` : ''}
             </div>
         `;
         $('#quiz-modal-footer').innerHTML = `
             <button class="btn-secondary" id="quiz-retry-btn">重新答题</button>
+            ${hasCorrectableWrong ? '<button class="btn-warning" id="quiz-correct-btn">开始矫正练习</button>' : ''}
             <button class="btn-primary" id="quiz-close-btn">确定</button>
         `;
 
         $('#quiz-retry-btn').addEventListener('click', () => openQuiz(task));
+        $('#quiz-correct-btn')?.addEventListener('click', () => startMasteryCorrection(task, wrong));
         $('#quiz-close-btn').addEventListener('click', () => {
             closeAllModals();
-            loadTask(task.id); // 刷新任务页显示完成状态
+            loadTask(task.id);
         });
 
         renderSidebar();
+    }
+
+    // ===== 掌握度矫正练习 =====
+    let currentMasterySession = null;
+
+    function startMasteryCorrection(task, wrongItems) {
+        if (typeof MasteryEngine === 'undefined') { toast('掌握学习引擎未加载'); return; }
+        const recommendations = MasteryEngine.recommendVariants(wrongItems);
+        if (recommendations.recommendations.length === 0) {
+            toast('暂无可用的变式题，请稍后再试');
+            return;
+        }
+
+        currentMasterySession = {
+            task, originalWrong: wrongItems,
+            recommendations: recommendations.recommendations,
+            unmatched: recommendations.unmatched,
+            currentRound: 1,
+            index: 0, score: 0, answers: []
+        };
+
+        const title = $('#quiz-modal-title');
+        if (title) title.textContent = '掌握度矫正练习 (第1轮)';
+        renderMasteryQuestion();
+    }
+
+    function renderMasteryQuestion() {
+        const session = currentMasterySession;
+        if (!session || session.index >= session.recommendations.length) {
+            finishMasteryRound();
+            return;
+        }
+        const rec = session.recommendations[session.index];
+        const q = rec.variant;
+        const body = $('#quiz-modal-body');
+        const footer = $('#quiz-modal-footer');
+
+        const matchLabels = { exact: '精确变式', knowledge: '同知识点同层级', fallback: '同知识点近似层级' };
+        const tagHtml = (q.bloom || q.solo) ? `
+            <div class="question-tags">
+                ${q.bloom ? `<span class="q-tag bloom">${q.bloom}</span>` : ''}
+                ${q.solo ? `<span class="q-tag solo">${q.solo}</span>` : ''}
+                ${(q.knowledgeTags || []).map(t => `<span class="q-tag knowledge">${t}</span>`).join('')}
+            </div>
+            <div class="variant-source-info">匹配方式: ${matchLabels[rec.matchLevel]} · 矫正第${session.currentRound}轮</div>
+        ` : '';
+
+        let optionsHtml = '';
+        if (q.type === 'single' || q.type === 'judge') {
+            optionsHtml = `<div class="quiz-options">${q.options.map((opt, i) => `
+                <label class="quiz-option" data-idx="${i}">
+                    <input type="radio" name="mastery-opt" value="${i}">
+                    <span>${opt}</span>
+                </label>
+            `).join('')}</div>`;
+        } else if (q.type === 'multi' || q.type === 'case') {
+            optionsHtml = `
+                ${q.caseText ? `<div class="case-text">${q.caseText}</div>` : ''}
+                <div class="quiz-options">${q.options.map((opt, i) => `
+                    <label class="quiz-option" data-idx="${i}">
+                        <input type="checkbox" name="mastery-opt" value="${i}">
+                        <span>${opt}</span>
+                    </label>
+                `).join('')}</div>`;
+        }
+
+        body.innerHTML = `
+            <div class="quiz-question mastery-mode">
+                <div class="mastery-header">
+                    <span class="mastery-badge">矫正练习</span>
+                    <span class="mastery-progress">${session.index + 1} / ${session.recommendations.length}</span>
+                </div>
+                <div class="quiz-question-text">${session.index + 1}. ${q.question}</div>
+                ${tagHtml}
+                ${optionsHtml}
+                <div id="quiz-result-area"></div>
+            </div>
+        `;
+
+        footer.innerHTML = `
+            <span style="font-size:13px;color:var(--gray-400)">矫正 ${session.index + 1} / ${session.recommendations.length}</span>
+            <button class="btn-primary" id="mastery-submit-btn">提交答案</button>
+        `;
+
+        $$('.quiz-option').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                const input = el.querySelector('input');
+                if (input.type === 'radio') {
+                    $$('.quiz-option').forEach(o => o.classList.remove('selected'));
+                    input.checked = true;
+                    el.classList.add('selected');
+                } else {
+                    input.checked = !input.checked;
+                    el.classList.toggle('selected', input.checked);
+                }
+            });
+        });
+
+        $('#mastery-submit-btn').addEventListener('click', () => submitMasteryAnswer(q, rec));
+    }
+
+    function submitMasteryAnswer(q, rec) {
+        let answer = null, correct = false, yourText = '', correctText = '';
+
+        if (q.type === 'single' || q.type === 'judge') {
+            const sel = document.querySelector('input[name="mastery-opt"]:checked');
+            if (!sel) { toast('请选择答案'); return; }
+            answer = parseInt(sel.value);
+            correct = answer === q.answer;
+            yourText = q.options[answer];
+            correctText = q.options[q.answer];
+        } else if (q.type === 'multi' || q.type === 'case') {
+            const checked = Array.from(document.querySelectorAll('input[name="mastery-opt"]:checked'));
+            if (checked.length === 0) { toast('请至少选择一项'); return; }
+            answer = checked.map(cb => parseInt(cb.value)).sort((a, b) => a - b);
+            const expected = Array.isArray(q.answer) ? [...q.answer].sort((a, b) => a - b) : [q.answer];
+            correct = JSON.stringify(answer) === JSON.stringify(expected);
+            yourText = answer.map(i => q.options[i]).join(', ');
+            correctText = expected.map(i => q.options[i]).join(', ');
+        }
+
+        // 显示对错
+        if (q.options) {
+            $$('.quiz-option').forEach((el, i) => {
+                el.style.pointerEvents = 'none';
+                const isCorrectOpt = Array.isArray(q.answer) ? q.answer.includes(i) : i === q.answer;
+                if (isCorrectOpt) el.classList.add('correct');
+                else {
+                    const isSelected = Array.isArray(answer) ? answer.includes(i) : i === answer;
+                    if (isSelected && !isCorrectOpt) el.classList.add('wrong');
+                }
+            });
+        }
+
+        const resultArea = $('#quiz-result-area');
+        resultArea.innerHTML = `
+            <div class="quiz-result ${correct ? 'correct' : 'wrong'}">
+                <div class="quiz-result-title">${correct ? '回答正确！' : '回答错误'}</div>
+                <div>${q.explain || ''}</div>
+            </div>
+        `;
+
+        // 记录结果并提交到引擎
+        MasteryEngine.submitCorrectionRound(rec.wrongId, q.id, correct);
+        if (correct) currentMasterySession.score++;
+        currentMasterySession.answers.push({ variantId: q.id, wrongId: rec.wrongId, correct, bloom: q.bloom, knowledgeTags: q.knowledgeTags });
+
+        const isLast = currentMasterySession.index >= currentMasterySession.recommendations.length - 1;
+        const footer = $('#quiz-modal-footer');
+        footer.innerHTML = `
+            <span style="font-size:13px;color:var(--gray-400)">${currentMasterySession.index + 1} / ${currentMasterySession.recommendations.length}</span>
+            <button class="btn-primary" id="mastery-next-btn">${isLast ? '查看掌握报告' : '下一题'}</button>
+        `;
+
+        $('#mastery-next-btn').addEventListener('click', () => {
+            if (isLast) finishMasteryRound();
+            else { currentMasterySession.index++; renderMasteryQuestion(); }
+        });
+    }
+
+    function finishMasteryRound() {
+        const session = currentMasterySession;
+        if (!session) return;
+
+        // 汇总掌握状态
+        const topicMap = new Map();
+        session.answers.forEach(a => {
+            const tag = (a.knowledgeTags || ['综合'])[0];
+            const bloom = a.bloom || 'B1';
+            const key = MasteryEngine._makeKey(tag, bloom);
+            if (!topicMap.has(key)) topicMap.set(key, { tag, bloom, correct: 0, total: 0 });
+            const entry = topicMap.get(key);
+            entry.total++;
+            if (a.correct) entry.correct++;
+        });
+
+        const topicResults = [];
+        topicMap.forEach((v, k) => {
+            const status = MasteryEngine.getMasteryStatus(v.tag, v.bloom);
+            topicResults.push({ key: k, ...v, ...status });
+        });
+
+        const allMastered = topicResults.every(t => t.mastered);
+        const totalQ = session.recommendations.length;
+        const correctQ = session.score;
+
+        $('#quiz-modal-body').innerHTML = `
+            <div class="mastery-report">
+                <div class="mastery-report-header">
+                    <div style="font-size:36px">${allMastered ? '🎯' : '📈'}</div>
+                    <h3>${allMastered ? '全部掌握！' : '矫正练习完成'}</h3>
+                    <p>第${session.currentRound}轮 · 答对 ${correctQ} / ${totalQ}</p>
+                </div>
+                <div class="mastery-topic-list">
+                    ${topicResults.map(t => `
+                        <div class="mastery-topic-item ${t.mastered ? 'mastered' : 'unmastered'}">
+                            <div class="mastery-topic-info">
+                                <span class="mastery-topic-tag">${t.tag}</span>
+                                <span class="q-tag bloom">${t.bloom}</span>
+                            </div>
+                            <div class="mastery-topic-status">
+                                <span class="mastery-accuracy">${t.accuracy}%</span>
+                                <span class="mastery-label ${t.mastered ? '' : 'style="background:var(--warning);color:white"'}">${t.mastered ? '已掌握' : '未掌握'}</span>
+                            </div>
+                            <div class="mastery-progress-bar">
+                                <div class="mastery-progress-fill" style="width:${t.accuracy}%;background:${t.mastered ? 'var(--success)' : 'var(--warning)'}"></div>
+                                <div class="mastery-threshold-line" style="left:80%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        $('#quiz-modal-footer').innerHTML = `
+            <button class="btn-primary" id="mastery-done-btn">完成</button>
+        `;
+
+        $('#mastery-done-btn').addEventListener('click', () => {
+            const task = session.task;
+            currentMasterySession = null;
+            closeAllModals();
+            loadTask(task.id);
+        });
+
+        // 恢复弹窗标题
+        const title = $('#quiz-modal-title');
+        if (title) title.textContent = '小测';
     }
 
     // ===== 测评考核页 =====
@@ -1135,20 +1374,55 @@
         scoreHtml += '</table>';
         scoreStats.innerHTML = scoreHtml;
 
-        // 错题回顾
+        // 错题回顾（增强：掌握状态+矫正入口）
         const wrongContainer = $('#wrong-questions');
         if (data.wrongQuestions.length === 0) {
             wrongContainer.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无错题</div><div class="empty-state-desc">继续保持！</div></div>';
         } else {
             wrongContainer.innerHTML = data.wrongQuestions.slice(0, 20).map((w, i) => `
-                <div class="wrong-q-item">
-                    <div class="wrong-q-title">${i+1}. ${w.question}</div>
+                <div class="wrong-q-item ${w.mastered ? 'mastered' : ''}">
+                    <div class="wrong-q-title">
+                        <span>${i+1}. ${w.question}</span>
+                        ${w.mastered ? '<span class="mastery-badge-small mastered">已掌握</span>'
+                            : (w.correctionHistory?.length > 0 ? '<span class="mastery-badge-small correcting">矫正中</span>'
+                            : '<span class="mastery-badge-small unmastered">待矫正</span>')}
+                    </div>
                     <div class="wrong-q-answer">
-                        <span class="wrong">你的答案：${w.yourAnswer}</span> · 
+                        <span class="wrong">你的答案：${w.yourAnswer}</span> ·
                         <span class="correct">正确答案：${w.correctAnswer}</span>
+                    </div>
+                    <div class="wrong-q-meta">
+                        ${w.bloom ? `<span class="q-tag bloom">${w.bloom}</span>` : ''}
+                        ${(w.knowledgeTags || []).slice(0, 2).map(t => `<span class="q-tag knowledge">${t}</span>`).join('')}
+                        ${w.correctionHistory?.length > 0 ? `<span style="font-size:12px;color:var(--gray-400);margin-left:4px">已矫正${w.correctionHistory.length}轮</span>` : ''}
+                        ${!w.mastered && typeof MasteryEngine !== 'undefined' ? '<button class="btn-sm btn-warning wrong-correct-btn" style="margin-left:auto">矫正练习</button>' : ''}
                     </div>
                 </div>
             `).join('');
+
+            // 绑定单题矫正按钮
+            wrongContainer.querySelectorAll('.wrong-correct-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = e.target.closest('.wrong-q-item');
+                    const idx = Array.from(wrongContainer.children).indexOf(item);
+                    const wq = data.wrongQuestions[idx];
+                    if (!wq) return;
+                    const rec = MasteryEngine.getVariantForQuestion(wq.questionId);
+                    if (!rec) { toast('该题暂无可用变式题'); return; }
+                    currentMasterySession = {
+                        task: COURSE_DATA.projects.flatMap(p => p.tasks).find(t => t.id === wq.taskId) || { id: '', quiz: [], title: '' },
+                        originalWrong: [wq],
+                        recommendations: [rec],
+                        unmatched: [],
+                        currentRound: 1, index: 0, score: 0, answers: []
+                    };
+                    openModal('quiz-modal');
+                    const title = $('#quiz-modal-title');
+                    if (title) title.textContent = '单题矫正练习';
+                    renderMasteryQuestion();
+                });
+            });
         }
 
         // 学习效果分析（专业报告区）

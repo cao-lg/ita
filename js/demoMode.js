@@ -82,6 +82,23 @@ const DemoMode = {
                     '综合应用': { correct: 4, total: 6 }
                 },
                 lastUpdated: new Date().toISOString()
+            },
+            masteryState: {
+                masteredTopics: ['Python基础', '数据获取', 'Pandas'],
+                correctingTopics: ['数据清洗', '数据分析'],
+                unmasteredTopics: ['财务指标', '可视化', 'Matplotlib', 'Pyecharts', '综合应用'],
+                topicStats: {
+                    'Python基础': { correct: 9, total: 11, accuracy: 82, threshold: 80, status: 'mastered' },
+                    '数据获取': { correct: 7, total: 9, accuracy: 78, threshold: 75, status: 'mastered' },
+                    'Pandas': { correct: 8, total: 10, accuracy: 80, threshold: 80, status: 'mastered' },
+                    '数据清洗': { correct: 7, total: 9, accuracy: 78, threshold: 80, status: 'correcting' },
+                    '数据分析': { correct: 6, total: 9, accuracy: 67, threshold: 80, status: 'correcting' },
+                    '财务指标': { correct: 5, total: 8, accuracy: 63, threshold: 80, status: 'unmastered' },
+                    '可视化': { correct: 6, total: 8, accuracy: 75, threshold: 80, status: 'unmastered' },
+                    'Matplotlib': { correct: 5, total: 7, accuracy: 71, threshold: 80, status: 'unmastered' },
+                    'Pyecharts': { correct: 4, total: 6, accuracy: 67, threshold: 80, status: 'unmastered' },
+                    '综合应用': { correct: 4, total: 6, accuracy: 67, threshold: 80, status: 'unmastered' }
+                }
             }
         };
 
@@ -116,6 +133,7 @@ const DemoMode = {
                         if (Math.random() > 0.5) {
                             const wrongQ = task.quiz[Math.floor(Math.random() * task.quiz.length)];
                             if (wrongQ) {
+                                const masteryStatus = Math.random() > 0.5 ? 'mastered' : (Math.random() > 0.5 ? 'correcting' : 'unmastered');
                                 demo.wrongQuestions.push({
                                     questionId: wrongQ.id,
                                     question: wrongQ.question,
@@ -123,7 +141,8 @@ const DemoMode = {
                                     correctAnswer: wrongQ.options ? wrongQ.options[wrongQ.answer] : wrongQ.answer,
                                     knowledgePoint: task.title,
                                     taskId: task.id,
-                                    timestamp: new Date(Date.now() - daysAgo * 86400000).toISOString()
+                                    timestamp: new Date(Date.now() - daysAgo * 86400000).toISOString(),
+                                    mastery: masteryStatus
                                 });
                             }
                         }

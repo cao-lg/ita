@@ -8,12 +8,12 @@ const STORAGE_KEY = 'embd_learning_data';
 // 默认数据结构
 function getDefaultData() {
     return {
-        dataVersion: 2,
+        dataVersion: 3,
         userInfo: { name: '', className: '', studentId: '' },
         progress: {},
         quizRecords: {},      // { taskId: { score, bestScore, attempts, answers: [] } }
         unitTestRecords: {},  // { projectId: { bestScore, attempts: [], records: [] } }
-        wrongQuestions: [],   // { questionId, question, yourAnswer, correctAnswer, type, taskId/projectId }
+        wrongQuestions: [],   // { questionId, question, yourAnswer, correctAnswer, type, taskId/projectId, bloom, solo, knowledgeTags, variantGroupId, correctionHistory, mastered, masteredAt }
         totalLearnTime: 0,    // 分钟
         lastActiveTime: null,
         taskQuizStatus: {},   // { taskId: boolean } 是否完成小测
@@ -26,13 +26,16 @@ function getDefaultData() {
             soloTotals:  { S1: 0, S2: 0, S3: 0, S4: 0 },
             knowledgeScores: {},  // { tag: { correct, total } }
             lastUpdated: null
-        }
+        },
+        masteryState: {}      // { "knowledgeTag__bloom": { totalAttempts, correctCount, accuracy, mastered, masteredAt, rounds, usedVariantIds, sourceWrongIds } }
     };
 }
 
-// 数据迁移 V1 -> V2
+// 数据迁移 V1 -> V2 -> V3
 function migrateData(data) {
     const version = data.dataVersion || 1;
+
+    // V1 -> V2: 添加 cognitiveProfile
     if (version < 2) {
         data.cognitiveProfile = {
             bloomScores: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0, B6: 0 },
@@ -45,6 +48,44 @@ function migrateData(data) {
         data.legacyRecordWarning = true;
         data.dataVersion = 2;
     }
+
+    // V2 -> V3: 添加 masteryState，扩展 wrongQuestions 结构
+    if (data.dataVersion < 3) {
+        data.masteryState = data.masteryState || {};
+
+        // 为历史错题补充标签和矫正字段
+        data.wrongQuestions.forEach(w => {
+            if (!w.bloom || !w.knowledgeTags) {
+                const tags = inferQuestionTags(w);
+                w.bloom = w.bloom || tags.bloom;
+                w.solo = w.solo || tags.solo;
+                w.knowledgeTags = w.knowledgeTags || (tags.knowledgeTags.length > 0 ? tags.knowledgeTags : ['综合']);
+            }
+            if (!w.variantGroupId) w.variantGroupId = 'vg-' + w.questionId;
+            if (!w.correctionHistory) w.correctionHistory = [];
+            if (w.mastered === undefined) w.mastered = false;
+        });
+
+        // 基于已有认知画像初始化 masteryState 骨架
+        const cp = data.cognitiveProfile;
+        if (cp && cp.knowledgeScores) {
+            Object.keys(cp.knowledgeScores).forEach(tag => {
+                ['B1','B2','B3','B4','B5','B6'].forEach(bloom => {
+                    const key = `${tag}__${bloom}`;
+                    if (!data.masteryState[key]) {
+                        data.masteryState[key] = {
+                            totalAttempts: 0, correctCount: 0, accuracy: 0,
+                            mastered: false, masteredAt: null,
+                            rounds: [], usedVariantIds: [], sourceWrongIds: []
+                        };
+                    }
+                });
+            });
+        }
+
+        data.dataVersion = 3;
+    }
+
     return data;
 }
 
@@ -181,11 +222,23 @@ function recordQuiz(taskId, score, total, answers, wrongList) {
     // 标记完成
     _data.taskQuizStatus[taskId] = true;
 
-    // 记录错题
+    // 记录错题（含掌握学习标签）
     wrongList.forEach(w => {
         const idx = _data.wrongQuestions.findIndex(q => q.questionId === w.questionId && q.taskId === taskId);
         if (idx === -1) {
-            _data.wrongQuestions.push({ ...w, taskId, timestamp: new Date().toISOString() });
+            const tags = w.bloom ? { bloom: w.bloom, solo: w.solo || 'S1', knowledgeTags: w.knowledgeTags || [] }
+                                 : inferQuestionTags(w);
+            _data.wrongQuestions.push({
+                ...w,
+                taskId,
+                timestamp: new Date().toISOString(),
+                bloom: tags.bloom,
+                solo: tags.solo,
+                knowledgeTags: tags.knowledgeTags.length > 0 ? tags.knowledgeTags : ['综合'],
+                variantGroupId: 'vg-' + w.questionId,
+                correctionHistory: [],
+                mastered: false
+            });
         }
     });
 
@@ -219,11 +272,23 @@ function recordUnitTest(projectId, score, total, answers, wrongList, durationSec
     existing.records.push(answers);
     _data.unitTestRecords[projectId] = existing;
 
-    // 记录错题
+    // 记录错题（含掌握学习标签）
     wrongList.forEach(w => {
         const idx = _data.wrongQuestions.findIndex(q => q.questionId === w.questionId && q.projectId === projectId);
         if (idx === -1) {
-            _data.wrongQuestions.push({ ...w, projectId, timestamp: new Date().toISOString() });
+            const tags = w.bloom ? { bloom: w.bloom, solo: w.solo || 'S1', knowledgeTags: w.knowledgeTags || [] }
+                                 : inferQuestionTags(w);
+            _data.wrongQuestions.push({
+                ...w,
+                projectId,
+                timestamp: new Date().toISOString(),
+                bloom: tags.bloom,
+                solo: tags.solo,
+                knowledgeTags: tags.knowledgeTags.length > 0 ? tags.knowledgeTags : ['综合'],
+                variantGroupId: 'vg-' + w.questionId,
+                correctionHistory: [],
+                mastered: false
+            });
         }
     });
 
@@ -451,6 +516,91 @@ function getStats() {
     };
 }
 
+// ===== 掌握学习状态操作 =====
+
+function getMasteryState() {
+    return _data.masteryState || {};
+}
+
+function updateMasteryStatus(key, roundData) {
+    if (!_data.masteryState) _data.masteryState = {};
+    if (!_data.masteryState[key]) {
+        _data.masteryState[key] = {
+            totalAttempts: 0, correctCount: 0, accuracy: 0,
+            mastered: false, masteredAt: null,
+            rounds: [], usedVariantIds: [], sourceWrongIds: []
+        };
+    }
+    const state = _data.masteryState[key];
+    state.totalAttempts += roundData.totalCount;
+    state.correctCount += roundData.correctCount;
+    state.accuracy = state.totalAttempts > 0
+        ? Math.round((state.correctCount / state.totalAttempts) * 100) : 0;
+    // 最低样本量检查：不足3次不判定为掌握
+    state.mastered = state.totalAttempts >= 3 && state.accuracy >= 80;
+    if (state.mastered && !state.masteredAt) {
+        state.masteredAt = new Date().toISOString();
+    }
+    state.rounds.push({
+        round: state.rounds.length + 1,
+        date: new Date().toISOString(),
+        questionIds: roundData.questionIds || [],
+        correctCount: roundData.correctCount,
+        totalCount: roundData.totalCount
+    });
+    if (roundData.variantIds) {
+        state.usedVariantIds.push(...roundData.variantIds);
+    }
+    persist();
+    return state;
+}
+
+function updateWrongQuestionCorrection(questionId, correctionRecord) {
+    const wq = _data.wrongQuestions.find(w => w.questionId === questionId);
+    if (!wq) return;
+    if (!wq.correctionHistory) wq.correctionHistory = [];
+    wq.correctionHistory.push(correctionRecord);
+    // 如果本轮正确，检查是否达到掌握
+    if (correctionRecord.correct) {
+        const tag = (wq.knowledgeTags || ['综合'])[0];
+        const bloom = wq.bloom || 'B1';
+        const key = `${tag}__${bloom}`;
+        const state = _data.masteryState[key];
+        if (state && state.mastered) {
+            wq.mastered = true;
+            wq.masteredAt = state.masteredAt;
+        }
+    }
+    persist();
+}
+
+function findQuestionById(questionId) {
+    const projects = window.COURSE_DATA?.projects || [];
+    for (const p of projects) {
+        for (const t of p.tasks) {
+            if (t.quiz) {
+                const found = t.quiz.find(q => q.id === questionId);
+                if (found) return found;
+            }
+        }
+    }
+    // 检查单元测试
+    const uts = window.COURSE_DATA?.unitTests || {};
+    for (const pid of Object.keys(uts)) {
+        const q = (uts[pid].questions || []).find(q => q.id === questionId);
+        if (q) return q;
+    }
+    // 检查扩展题库
+    if (typeof EXTENDED_QUESTIONS !== 'undefined') {
+        for (const pid of Object.keys(EXTENDED_QUESTIONS)) {
+            const ext = EXTENDED_QUESTIONS[pid];
+            const found = [...(ext.quiz || []), ...(ext.unitTest || [])].find(q => q.id === questionId);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
 window.Storage = {
     loadData,
     saveData,
@@ -470,5 +620,9 @@ window.Storage = {
     resetAll,
     getStats,
     getCognitiveProfile,
-    inferQuestionTags
+    inferQuestionTags,
+    getMasteryState,
+    updateMasteryStatus,
+    updateWrongQuestionCorrection,
+    findQuestionById
 };

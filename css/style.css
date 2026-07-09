@@ -1949,3 +1949,32 @@ body.demo-active .app-main {
     .certificate-border { padding: 24px; }
     .certificate-title { font-size: 28px; }
 }
+
+/* ===== 掌握学习 ===== */
+.btn-warning { background: var(--warning); color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: 500; }
+.btn-warning:hover { background: #b45309; }
+.q-tag.knowledge { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; margin-right: 4px; }
+.mastery-mode .mastery-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.mastery-badge { background: var(--warning-light); color: var(--warning); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.mastery-progress { font-size: 13px; color: var(--gray-400); }
+.variant-source-info { font-size: 12px; color: var(--gray-400); margin-top: 8px; font-style: italic; }
+.mastery-report { padding: 16px; }
+.mastery-report-header { text-align: center; margin-bottom: 20px; }
+.mastery-topic-list { display: flex; flex-direction: column; gap: 12px; }
+.mastery-topic-item { padding: 12px; border-radius: var(--radius); border: 1px solid var(--gray-200); }
+.mastery-topic-item.mastered { border-color: var(--success); background: var(--success-light); }
+.mastery-topic-item.unmastered { border-color: var(--warning); background: var(--warning-light); }
+.mastery-topic-info { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.mastery-topic-tag { font-weight: 600; font-size: 14px; }
+.mastery-topic-status { display: flex; align-items: center; gap: 12px; }
+.mastery-accuracy { font-size: 18px; font-weight: 700; }
+.mastery-label { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--success); color: white; }
+.mastery-progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; position: relative; margin-top: 8px; overflow: visible; }
+.mastery-progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.mastery-threshold-line { position: absolute; top: -2px; width: 2px; height: 10px; background: var(--danger); }
+.wrong-q-item.mastered { opacity: 0.6; border-left: 3px solid var(--success); padding-left: 13px; }
+.wrong-q-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.mastery-badge-small { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; margin-left: 8px; }
+.mastery-badge-small.mastered { background: var(--success-light); color: var(--success); }
+.mastery-badge-small.correcting { background: var(--warning-light); color: var(--warning); }
+.mastery-badge-small.unmastered { background: var(--danger-light); color: var(--danger); }
