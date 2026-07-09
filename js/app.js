@@ -1205,12 +1205,13 @@
         `;
 
         // 渲染各分析图表（延迟确保DOM已插入）
+        const demoCp = isDemo ? data.cognitiveProfile : null;
         setTimeout(() => {
-            if (typeof BloomRadar !== 'undefined') BloomRadar.render('chart-bloom-radar');
-            if (typeof SoloDistribution !== 'undefined') SoloDistribution.render('chart-solo-distribution');
-            if (typeof KnowledgeHeatmap !== 'undefined') KnowledgeHeatmap.render('chart-knowledge-heatmap');
-            if (typeof LearningTrend !== 'undefined') LearningTrend.render('chart-learning-trend');
-            if (typeof DiagnosisReport !== 'undefined') DiagnosisReport.render('chart-diagnosis-report');
+            if (typeof BloomRadar !== 'undefined') BloomRadar.render('chart-bloom-radar', demoCp);
+            if (typeof SoloDistribution !== 'undefined') SoloDistribution.render('chart-solo-distribution', demoCp);
+            if (typeof KnowledgeHeatmap !== 'undefined') KnowledgeHeatmap.render('chart-knowledge-heatmap', demoCp);
+            if (typeof LearningTrend !== 'undefined') LearningTrend.render('chart-learning-trend', isDemo ? data : null);
+            if (typeof DiagnosisReport !== 'undefined') DiagnosisReport.render('chart-diagnosis-report', demoCp);
         }, 100);
     }
 

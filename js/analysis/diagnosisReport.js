@@ -4,11 +4,11 @@
  */
 
 const DiagnosisReport = {
-    render(containerId) {
+    render(containerId, customProfile = null) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        const cp = Storage.getCognitiveProfile();
+        const cp = customProfile || Storage.getCognitiveProfile();
         if (!cp) {
             container.innerHTML = '<p class="empty-state-desc">暂无诊断数据</p>';
             return;

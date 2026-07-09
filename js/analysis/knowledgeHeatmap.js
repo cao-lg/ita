@@ -6,11 +6,11 @@
 const KnowledgeHeatmap = {
     chart: null,
 
-    render(containerId) {
+    render(containerId, customProfile = null) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        const cp = Storage.getCognitiveProfile();
+        const cp = customProfile || Storage.getCognitiveProfile();
         if (!cp || !cp.knowledgeScores || Object.keys(cp.knowledgeScores).length === 0) {
             container.innerHTML = '<p class="empty-state-desc">暂无知识点掌握数据</p>';
             return;

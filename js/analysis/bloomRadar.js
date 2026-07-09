@@ -6,11 +6,11 @@
 const BloomRadar = {
     chart: null,
 
-    render(containerId) {
+    render(containerId, customProfile = null) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        const cp = Storage.getCognitiveProfile();
+        const cp = customProfile || Storage.getCognitiveProfile();
         if (!cp) {
             container.innerHTML = '<p class="empty-state-desc">暂无认知画像数据，请先完成测验</p>';
             return;

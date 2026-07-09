@@ -62,7 +62,27 @@ const DemoMode = {
             lastActiveTime: new Date().toISOString(),
             taskQuizStatus: {},
             taskLearned: {},
-            timestamps: {}
+            timestamps: {},
+            dataVersion: 2,
+            cognitiveProfile: {
+                bloomScores: { B1: 8, B2: 10, B3: 7, B4: 5, B5: 3, B6: 2 },
+                bloomTotals: { B1: 10, B2: 12, B3: 10, B4: 8, B5: 5, B6: 3 },
+                soloScores:  { S1: 12, S2: 10, S3: 6, S4: 2 },
+                soloTotals:  { S1: 15, S2: 13, S3: 9, S4: 4 },
+                knowledgeScores: {
+                    'Python基础': { correct: 9, total: 11 },
+                    '数据获取': { correct: 7, total: 9 },
+                    'Pandas': { correct: 8, total: 10 },
+                    '数据清洗': { correct: 7, total: 9 },
+                    '数据分析': { correct: 6, total: 9 },
+                    '财务指标': { correct: 5, total: 8 },
+                    '可视化': { correct: 6, total: 8 },
+                    'Matplotlib': { correct: 5, total: 7 },
+                    'Pyecharts': { correct: 4, total: 6 },
+                    '综合应用': { correct: 4, total: 6 }
+                },
+                lastUpdated: new Date().toISOString()
+            }
         };
 
         // 为每个项目和任务生成演示进度

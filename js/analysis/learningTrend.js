@@ -6,11 +6,11 @@
 const LearningTrend = {
     chart: null,
 
-    render(containerId) {
+    render(containerId, customData = null) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        const data = Storage.getData();
+        const data = customData || Storage.getData();
         if (!data) {
             container.innerHTML = '<p class="empty-state-desc">暂无学习趋势数据</p>';
             return;
