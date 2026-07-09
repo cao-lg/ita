@@ -581,6 +581,19 @@ body {
     font-size: 14px;
     color: var(--gray-700);
 }
+.content-body .highlight-box .ref-link {
+    display: inline;
+    font-size: 12px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: 2px;
+}
+.content-body .highlight-box .ref-link:hover {
+    text-decoration: underline;
+    color: var(--primary-dark);
+}
 
 .content-body .warn-box {
     background: var(--warning-light);

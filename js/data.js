@@ -21,11 +21,11 @@ const COURSE_DATA = {
 <div class="highlight-box">
 <strong>Python 在财务领域的典型应用：</strong>
 <ul>
-<li><strong>财务报表自动化生成与分析</strong> — 某大型制造业集团通过 Python 脚本自动从 ERP 导出数据，生成月度损益表和成本分析表，月度结账时间缩短 40%[$TRAE_REF](https://www.finebi.com/blog/article/69017f5728946ecca8d3b596)。某零售集团用 Python 实现日报自动采集 + 异常预警，报表出错率近乎为零[$TRAE_REF](https://www.fanruan.com/finepedia/article/68b00b6e0bd240a239763473)。</li>
-<li><strong>海量交易数据的清洗与统计</strong> — 毕马威等四大会计师事务所在虚拟实习中使用 Python（Pandas、NumPy）完成缺失值智能填充、IQR/3σ 异常值识别、多源异构数据关联等审计数据处理工作[$TRAE_REF](https://wenku.csdn.net/doc/5arp1zjrba)。合肥市审计局在数字化采购审计中用 Python 和 R 语言清洗分散在不同系统中的数据，确保数据质量[$TRAE_REF](https://sjj.hefei.gov.cn/sjyd/nstd/15368453.html)。</li>
-<li><strong>财务指标计算与可视化呈现</strong> — FineReport 杜邦分析法实战案例中，使用 Python pandas 进行数据清理和标准化，批量计算杜邦分解指标（ROE、资产周转率、权益乘数等），并通过交互式仪表板呈现各分公司分析结果[$TRAE_REF](https://www.finereport.com/blog/article/68b9740dd2527e0eb7636863)。</li>
-<li><strong>基于历史数据的预测与建模</strong> — 银行业使用 Python 的 sklearn 和 XGBoost 构建信贷违约预测模型，结合征信和财报数据评估客户违约概率[$TRAE_REF](https://www.finebi.com/blog/article/68c8c78928946ecca89724a8)。某制造企业通过 LSTM 神经网络预测季度成本，年度预算偏差从 12% 降至 7%[$TRAE_REF](https://blog.51cto.com/u_16213592/14509690)。</li>
-<li><strong>审计数据抽样与异常检测</strong> — 企业 AI 审计实战中，使用 Python 的随机森林模型自动检测异常采购订单，结合价格差异、供应商合作次数等特征识别关联交易风险[$TRAE_REF](https://blog.csdn.net/neweastsun/article/details/158068885)。腾讯云 AI 审计案例通过 Python 分析发现收入与现金流不匹配、应收账款周转率异常下降等财务造假信号[$TRAE_REF](https://developer.cloud.tencent.com.cn/article/2670688?policyId=1004)。</li>
+<li><strong>财务报表自动化生成与分析</strong> — 某大型制造业集团通过 Python 脚本自动从 ERP 导出数据，生成月度损益表和成本分析表，月度结账时间缩短 40%。<a href="https://www.finebi.com/blog/article/69017f5728946ecca8d3b596" target="_blank" class="ref-link">[案例1]</a>某零售集团用 Python 实现日报自动采集 + 异常预警，报表出错率近乎为零<a href="https://www.fanruan.com/finepedia/article/68b00b6e0bd240a239763473" target="_blank" class="ref-link">[案例2]</a></li>
+<li><strong>海量交易数据的清洗与统计</strong> — 毕马威等四大会计师事务所在虚拟实习中使用 Python（Pandas、NumPy）完成缺失值智能填充、IQR/3σ 异常值识别、多源异构数据关联等审计数据处理工作<a href="https://wenku.csdn.net/doc/5arp1zjrba" target="_blank" class="ref-link">[案例]</a>。合肥市审计局在数字化采购审计中用 Python 和 R 语言清洗分散在不同系统中的数据，确保数据质量<a href="https://sjj.hefei.gov.cn/sjyd/nstd/15368453.html" target="_blank" class="ref-link">[案例]</a></li>
+<li><strong>财务指标计算与可视化呈现</strong> — FineReport 杜邦分析法实战案例中，使用 Python pandas 进行数据清理和标准化，批量计算杜邦分解指标（ROE、资产周转率、权益乘数等），并通过交互式仪表板呈现各分公司分析结果<a href="https://www.finereport.com/blog/article/68b9740dd2527e0eb7636863" target="_blank" class="ref-link">[案例]</a></li>
+<li><strong>基于历史数据的预测与建模</strong> — 银行业使用 Python 的 sklearn 和 XGBoost 构建信贷违约预测模型，结合征信和财报数据评估客户违约概率<a href="https://www.finebi.com/blog/article/68c8c78928946ecca89724a8" target="_blank" class="ref-link">[案例]</a>。某制造企业通过 LSTM 神经网络预测季度成本，年度预算偏差从 12% 降至 7%<a href="https://blog.51cto.com/u_16213592/14509690" target="_blank" class="ref-link">[案例]</a></li>
+<li><strong>审计数据抽样与异常检测</strong> — 企业 AI 审计实战中，使用 Python 的随机森林模型自动检测异常采购订单，结合价格差异、供应商合作次数等特征识别关联交易风险<a href="https://blog.csdn.net/neweastsun/article/details/158068885" target="_blank" class="ref-link">[案例]</a>。腾讯云 AI 审计案例通过 Python 分析发现收入与现金流不匹配、应收账款周转率异常下降等财务造假信号<a href="https://developer.cloud.tencent.com.cn/article/2670688?policyId=1004" target="_blank" class="ref-link">[案例]</a></li>
 </ul>
 </div>
 
