@@ -1622,6 +1622,9 @@
         $('#settings-id').value = data.userInfo.studentId;
     }
 
+    // 暴露给诊断报告等外部模块使用
+    window.loadTask = loadTask;
+
     // 启动
     document.addEventListener('DOMContentLoaded', init);
 })();

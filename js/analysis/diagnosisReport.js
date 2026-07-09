@@ -5,6 +5,53 @@
  */
 
 const DiagnosisReport = {
+    // 知识点 → 项目ID 映射（用于行动建议跳转）
+    _tagProjectMap: {
+        'Python基础': 'p1', '环境搭建': 'p1', '数据类型': 'p1', 'Python数据类型': 'p1',
+        '财务精度': 'p1', 'Python循环': 'p1', '折旧计算': 'p1', '浮点精度': 'p1',
+        '数据类型选择': 'p1',
+        '数据获取': 'p2', 'Excel': 'p2', 'requests': 'p2',
+        '爬虫合规': 'p2', '网络伦理': 'p2', '法律风险': 'p2', '文件操作': 'p2',
+        'Pandas': 'p3', '数据清洗': 'p3', '数据筛选': 'p3', '字符串处理': 'p3',
+        '缺失值处理': 'p3', '数据策略': 'p3', '函数设计': 'p3', '异常处理': 'p3',
+        '数据分析': 'p4', '财务指标': 'p4', 'ROE': 'p4', '杜邦分析': 'p4',
+        '财务对比': 'p4', '财务分析': 'p4', '环比分析': 'p4', '统计': 'p4',
+        '数据分析流程': 'p4', '异常值处理': 'p4',
+        '可视化': 'p5', 'Matplotlib': 'p5', 'Pyecharts': 'p5', '图表选择': 'p5',
+        '可视化设计': 'p5', '看板设计': 'p5', '双轴图': 'p5',
+        '综合应用': 'p6', '报告撰写': 'p6', '数据看板': 'p6',
+        '指标体系': 'p6', '评价体系': 'p6', '综合分析': 'p6',
+        '条件判断': 'p1', '循环': 'p1'
+    },
+
+    // Bloom → 推荐项目ID
+    _bloomProjectMap: {
+        'B1': 'p1', 'B2': 'p2', 'B3': 'p3', 'B4': 'p4', 'B5': 'p5', 'B6': 'p6'
+    },
+
+    // 生成跳转链接 HTML
+    _link(text, projectId) {
+        if (!projectId || !window.COURSE_DATA) return text;
+        const proj = window.COURSE_DATA.projects.find(p => p.id === projectId);
+        if (!proj) return text;
+        const firstTask = proj.tasks?.[0]?.id;
+        if (!firstTask) return text;
+        return `<a href="javascript:void(0)" class="dr-suggestion-link" data-task="${firstTask}">${text}</a>`;
+    },
+
+    // 绑定链接点击事件
+    _bindLinkEvents(container) {
+        container.querySelectorAll('.dr-suggestion-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const taskId = e.target.dataset.task;
+                if (taskId && typeof window.loadTask === 'function') {
+                    window.loadTask(taskId);
+                }
+            });
+        });
+    },
+
     render(containerId, customProfile = null) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -182,6 +229,9 @@ const DiagnosisReport = {
         this._renderBloomChart(bloomList);
         this._renderSoloChart(soloList);
         this._renderKnowledgeChart(knowledgeList);
+
+        // 绑定建议中的跳转链接
+        this._bindLinkEvents(container);
     },
 
     _generateSuggestions(weakestBloom, soloProgress, soloNames, soloKeys, highestSolo, weakKnowledge, avgRate) {
@@ -192,9 +242,9 @@ const DiagnosisReport = {
                 title: `强化「${weakestBloom.name}」能力`,
                 desc: `您在${weakestBloom.name}层次正确率仅 ${weakestBloom.rate}%，是当前最大的短板。建议：`,
                 steps: [
-                    `回顾该层次相关知识点，重做错题`,
-                    `尝试 ${weakestBloom.key === 'B4' ? '案例分析题' : weakestBloom.key === 'B5' ? '方案评价题' : '综合应用题'} 加强训练`,
-                    `与同学讨论解题思路，加深理解`
+                    `${this._link('回顾该层次相关知识点，重做错题', this._bloomProjectMap[weakestBloom.key])}`,
+                    `${this._link(weakestBloom.key === 'B4' ? '尝试案例分析题' : weakestBloom.key === 'B5' ? '尝试方案评价题' : '尝试综合应用题', this._bloomProjectMap[weakestBloom.key])} 加强训练`,
+                    '与同学讨论解题思路，加深理解'
                 ]
             });
         }
@@ -218,9 +268,9 @@ const DiagnosisReport = {
                 title: '回顾薄弱知识点',
                 desc: `以下知识点掌握度较低，建议优先复习：`,
                 steps: weakKnowledge.map(k => [
-                    `复习「${k.tag}」章节内容（正确率 ${k.rate}%）`,
-                    `重做相关练习题 ${k.total} 道`,
-                    k.rate < 50 ? '建议从头学习该章节' : '查漏补缺即可'
+                    `${this._link('复习「' + k.tag + '」章节内容（正确率 ' + k.rate + '%）', this._tagProjectMap[k.tag])}`,
+                    `${this._link('重做相关练习题 ' + k.total + ' 道', this._tagProjectMap[k.tag])}`,
+                    k.rate < 50 ? this._link('建议从头学习该章节', this._tagProjectMap[k.tag]) : '查漏补缺即可'
                 ]).flat()
             });
         }
@@ -230,9 +280,9 @@ const DiagnosisReport = {
                 title: '挑战高阶题目',
                 desc: '您的整体表现优秀，可以挑战更高难度：',
                 steps: [
-                    '尝试B6创造层次的代码实现题和设计题',
+                    this._link('尝试B6创造层次的代码实现题和设计题', 'p6'),
                     '用学到的知识分析真实财务报表数据',
-                    '尝试独立构建一个数据可视化看板项目'
+                    this._link('尝试独立构建一个数据可视化看板项目', 'p5')
                 ]
             });
         }
