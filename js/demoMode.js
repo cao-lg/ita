@@ -63,7 +63,7 @@ const DemoMode = {
             taskQuizStatus: {},
             taskLearned: {},
             timestamps: {},
-            dataVersion: 2,
+            dataVersion: 3,
             cognitiveProfile: {
                 bloomScores: { B1: 8, B2: 10, B3: 7, B4: 5, B5: 3, B6: 2 },
                 bloomTotals: { B1: 10, B2: 12, B3: 10, B4: 8, B5: 5, B6: 3 },
@@ -124,11 +124,40 @@ const DemoMode = {
                             attempts: Math.floor(Math.random() * 2) + 1
                         };
 
-                        // 随机生成1-2道错题
+                        // 随机生成1-2道错题（含完整掌握学习字段）
                         if (Math.random() > 0.5) {
                             const wrongQ = task.quiz[Math.floor(Math.random() * task.quiz.length)];
                             if (wrongQ) {
-                                const masteryStatus = Math.random() > 0.5 ? 'mastered' : (Math.random() > 0.5 ? 'correcting' : 'unmastered');
+                                const projectId = proj.id;
+                                // 基于项目推断标签
+                                const tagMap = { p1: 'Python基础', p2: '数据获取', p3: 'Pandas', p4: '数据分析', p5: '可视化', p6: '综合应用' };
+                                const kTag = tagMap[projectId] || '综合';
+                                const wBloom = 'B1';
+                                const wSolo = 'S1';
+                                const wKey = kTag + '__' + wBloom;
+                                const msState = demo.masteryState[wKey];
+
+                                let wMastered = false;
+                                let wCorrectionHistory = [];
+                                if (msState && msState.mastered) {
+                                    wMastered = true;
+                                    wCorrectionHistory = [
+                                        { round: 1, variantId: 'v-demo-1', correct: false, timestamp: new Date(Date.now() - 86400000 * 3).toISOString() },
+                                        { round: 2, variantId: 'v-demo-2', correct: true, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+                                        { round: 3, variantId: 'v-demo-3', correct: true, timestamp: new Date(Date.now() - 86400000).toISOString() }
+                                    ];
+                                } else if (msState && msState.needsFallback) {
+                                    wCorrectionHistory = [
+                                        { round: 1, variantId: 'v-demo-fb1', correct: false, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+                                        { round: 2, variantId: 'v-demo-fb2', correct: false, timestamp: new Date(Date.now() - 86400000).toISOString() },
+                                        { round: 3, variantId: 'v-demo-fb3', correct: false, timestamp: new Date(Date.now() - 86400000).toISOString() }
+                                    ];
+                                } else if (msState && msState.totalAttempts > 0) {
+                                    wCorrectionHistory = [
+                                        { round: 1, variantId: 'v-demo-c1', correct: msState.correctCount >= 1, timestamp: new Date(Date.now() - 86400000).toISOString() }
+                                    ];
+                                }
+
                                 demo.wrongQuestions.push({
                                     questionId: wrongQ.id,
                                     question: wrongQ.question,
@@ -137,7 +166,14 @@ const DemoMode = {
                                     knowledgePoint: task.title,
                                     taskId: task.id,
                                     timestamp: new Date(Date.now() - daysAgo * 86400000).toISOString(),
-                                    mastery: masteryStatus
+                                    type: wrongQ.type || 'single',
+                                    bloom: wBloom,
+                                    solo: wSolo,
+                                    knowledgeTags: [kTag],
+                                    variantGroupId: 'vg-' + wrongQ.id,
+                                    correctionHistory: wCorrectionHistory,
+                                    mastered: wMastered,
+                                    masteredAt: wMastered ? (msState?.masteredAt || null) : null
                                 });
                             }
                         }

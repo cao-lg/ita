@@ -1469,8 +1469,15 @@
             wrongContainer.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无错题</div><div class="empty-state-desc">继续保持！</div></div>';
         } else {
             wrongContainer.innerHTML = data.wrongQuestions.slice(0, 20).map((w, i) => {
-                const needsFallback = typeof MasteryEngine !== 'undefined' && MasteryEngine.needsFallbackLearning(w.questionId);
-                const canCorrect = !w.mastered && !needsFallback && typeof MasteryEngine !== 'undefined' && MasteryEngine.canContinueCorrection(w.questionId);
+                // 演示模式下 MasteryEngine 读取的是 Storage.getData()（空数据），
+                // 所以直接从当前 data 上下文检查 masteryState
+                const tags = w.knowledgeTags || ['综合'];
+                const bloom = w.bloom || 'B1';
+                const msKey = typeof MasteryEngine !== 'undefined' ? MasteryEngine._makeKey(tags[0], bloom) : (tags[0] + '__' + bloom);
+                const msState = (data.masteryState || {})[msKey];
+                const needsFallback = !!(msState && msState.needsFallback);
+                const canCorrect = !w.mastered && !needsFallback && typeof MasteryEngine !== 'undefined'
+                    && (w.correctionHistory || []).length < MasteryEngine.CONFIG.MAX_ROUNDS;
                 const badge = w.mastered
                     ? '<span class="mastery-badge-small mastered">已掌握</span>'
                     : needsFallback
