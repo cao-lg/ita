@@ -519,6 +519,67 @@ function exportToExcel() {
     const ws9 = XLSX.utils.aoa_to_sheet(msData);
     XLSX.utils.book_append_sheet(wb, ws9, '掌握学习状态');
 
+    // Sheet 10: 行为事件日志
+    if (typeof BehaviorTracker !== 'undefined') {
+        const events = BehaviorTracker.getEvents();
+        const evtHeader = [['时间', '事件类型', '目标', 'SRL阶段', '详情(摘要)', '会话ID']];
+        const evtData = [...evtHeader];
+        events.slice(-500).forEach(e => {
+            const detailStr = Object.entries(e.detail || {}).map(([k,v]) => k + ':' + v).join(', ');
+            evtData.push([
+                new Date(e.timestamp).toLocaleString(),
+                e.type,
+                e.target || '-',
+                e.srlPhase || '-',
+                detailStr.substring(0, 200),
+                e.sessionId || '-'
+            ]);
+        });
+        const ws10 = XLSX.utils.aoa_to_sheet(evtData);
+        XLSX.utils.book_append_sheet(wb, ws10, '行为事件日志');
+    }
+
+    // Sheet 11: 行为画像
+    if (typeof BehaviorTracker !== 'undefined') {
+        const bp = BehaviorTracker.computeBehaviorProfile();
+        const s = bp.sessionSummary || {};
+        const ic = bp.impulseCareful || {};
+        const cs = bp.completeSkip || {};
+        const rr = bp.reflectiveRepetitive || {};
+        const id = bp.independentDependent || {};
+        const pg = bp.persistentGiveup || {};
+        const bpData = [
+            ['行为画像维度', '指标', '值', '分类标签'],
+            ['学习节奏', '总学习会话数', s.totalSessions || 0, ''],
+            ['学习节奏', '平均会话时长(分钟)', s.avgDurationMin || 0, ''],
+            ['学习节奏', '总行为事件数', s.totalEvents || 0, ''],
+            ['学习节奏', '偏好学习时段', bp.preferredTimeSlot || '-', ''],
+            ['冲动/审慎', '平均作答时间(秒)', ic.avgResponseTimeSec || 0, ic.label || '数据不足'],
+            ['冲动/审慎', '答案变更率(%)', ic.answerChangeRate || 0, ''],
+            ['冲动/审慎', '变更后正确率(%)', ic.correctChangeRate || 0, ''],
+            ['冲动/审慎', '快速猜测率(<3秒,%)', ic.fastGuessRate || 0, ''],
+            ['完整/跳过', '小测完成率(%)', cs.quizCompletionRate || 0, cs.label || '数据不足'],
+            ['完整/跳过', '平均任务停留(秒)', cs.avgTaskDurationSec || 0, ''],
+            ['完整/跳过', '平均材料滚动深度(%)', cs.avgMaterialScrollPercent || 0, ''],
+            ['反思/重复', '平均反馈查看时长(秒)', rr.avgFeedbackDurationSec || 0, rr.label || '数据不足'],
+            ['反思/重复', '反馈查看率(%)', rr.feedbackViewRate || 0, ''],
+            ['反思/重复', '任务重访率(%)', rr.taskRevisitRate || 0, ''],
+            ['反思/重复', '错题回顾次数', rr.wrongReviewCount || 0, ''],
+            ['反思/重复', '错题重做次数', rr.wrongRetryCount || 0, ''],
+            ['独立/依赖', '提示查看次数', id.hintViewCount || 0, id.label || '数据不足'],
+            ['独立/依赖', '有效求助率(%)', id.effectiveHelpRate || 0, ''],
+            ['独立/依赖', '求助后正确率(%)', id.helpCorrectRate || 0, ''],
+            ['坚持/放弃', '回退触发次数', pg.fallbackTriggerCount || 0, pg.label || '数据不足'],
+            ['坚持/放弃', '矫正掌握率(%)', pg.correctionMasteryRate || 0, ''],
+            ['坚持/放弃', '重做小测数', pg.retriedQuizCount || 0, ''],
+            ['坚持/放弃', '中途放弃率(%)', pg.abandonmentRate || 0, ''],
+            ['综合', '首次作答正确率(%)', bp.firstAttemptAccuracy || 0, ''],
+            ['综合', '画像计算时间', bp.lastComputed || '-', '']
+        ];
+        const ws11 = XLSX.utils.aoa_to_sheet(bpData);
+        XLSX.utils.book_append_sheet(wb, ws11, '行为画像');
+    }
+
     XLSX.writeFile(wb, `${name}_经济管理大数据分析学习档案.xlsx`);
 }
 

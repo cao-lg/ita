@@ -24,6 +24,8 @@
         bindEvents();
         checkAuth();
         checkSharedReport();
+        // 初始化行为追踪（Winne & Hadwin SRL 四阶段 + Zimmerman 三阶段循环）
+        if (typeof BehaviorTracker !== 'undefined') BehaviorTracker.init();
     }
 
     // 合并扩展题库到课程数据，并为旧题补充标签
@@ -147,6 +149,9 @@
     }
 
     function switchPage(page) {
+        if (typeof BehaviorTracker !== 'undefined' && currentPage) {
+            BehaviorTracker.trackPageSwitch(currentPage, page);
+        }
         currentPage = page;
         $$('.main-page').forEach(el => el.classList.add('hidden'));
         $(`#page-${page}`).classList.remove('hidden');
@@ -466,6 +471,21 @@
         if (!isDemo) {
             Storage.markTaskLearned(taskId);
         }
+
+        // 行为埋点：任务查看 + 滚动深度
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackTaskView(taskId, project.id);
+            const mainEl = $('#learning-main');
+            if (mainEl) {
+                mainEl.addEventListener('scroll', function _scrollHandler() {
+                    const el = this;
+                    if (el.scrollHeight <= el.clientHeight) return;
+                    const pct = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
+                    BehaviorTracker.trackMaterialScroll(taskId, pct);
+                }, { passive: true });
+            }
+        }
+
         renderSidebar();
     }
 
@@ -525,6 +545,12 @@
             return;
         }
         currentQuiz = { task, index: 0, score: 0, answers: [], wrong: [] };
+
+        // 行为埋点：小测开始
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackQuizStart(task.id, currentProjectId, task.quiz.length);
+        }
+
         $('#quiz-modal-title').textContent = `${task.title} - 知识点小测`;
         $('#quiz-modal').classList.remove('hidden');
         renderQuizQuestion();
@@ -533,6 +559,12 @@
     function renderQuizQuestion() {
         const { task, index } = currentQuiz;
         const q = task.quiz[index];
+        currentQuiz._lastAnswer = undefined; // 重置答案变更追踪
+
+        // 行为埋点：题目查看（开始计时）
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackQuestionView(task.id, q.id, index, q.type, q.bloom, q.solo, q.knowledgeTags);
+        }
         const body = $('#quiz-modal-body');
         const footer = $('#quiz-modal-footer');
 
@@ -613,9 +645,20 @@
         if (q.type === 'single' || q.type === 'judge') {
             $$('.quiz-option').forEach(el => {
                 el.addEventListener('click', () => {
+                    // 行为埋点：答案变更检测
+                    if (typeof BehaviorTracker !== 'undefined' && currentQuiz._lastAnswer !== undefined) {
+                        const newIdx = parseInt(el.dataset.idx);
+                        if (currentQuiz._lastAnswer !== newIdx) {
+                            BehaviorTracker.trackAnswerChange(task.id, q.id, currentQuiz._lastAnswer, newIdx);
+                        }
+                    }
+                    currentQuiz._lastAnswer = parseInt(el.dataset.idx);
                     $$('.quiz-option').forEach(o => o.classList.remove('selected'));
                     el.classList.add('selected');
                     el.querySelector('input').checked = true;
+                    if (typeof BehaviorTracker !== 'undefined') {
+                        BehaviorTracker.trackAnswerSelect(task.id, q.id, el.dataset.idx);
+                    }
                 });
             });
         }
@@ -704,6 +747,11 @@
         if (correct) currentQuiz.score++;
         else currentQuiz.wrong.push({ questionId: q.id, question: q.question, yourAnswer: yourAnswerText, correctAnswer: correctAnswerText, knowledgePoint: currentQuiz.task.title });
 
+        // 行为埋点：答案提交
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackAnswerSubmit(currentQuiz.task.id, q.id, answer, correct);
+        }
+
         // 更新按钮
         const footer = $('#quiz-modal-footer');
         const isLast = currentQuiz.index >= currentQuiz.task.quiz.length - 1;
@@ -712,6 +760,10 @@
             <button class="btn-primary" id="quiz-next-btn">${isLast ? '完成小测' : '下一题'}</button>
         `;
         $('#quiz-next-btn').addEventListener('click', () => {
+            // 行为埋点：反馈查看时长
+            if (typeof BehaviorTracker !== 'undefined') {
+                BehaviorTracker.trackFeedbackView(currentQuiz.task.id, q.id);
+            }
             if (isLast) finishQuiz();
             else { currentQuiz.index++; renderQuizQuestion(); }
         });
@@ -722,6 +774,11 @@
         const total = task.quiz.length;
         const isDemo = DemoMode.isActive();
         const percentage = isDemo ? Math.round((score / total) * 100) : Storage.recordQuiz(task.id, score, total, answers, wrong);
+
+        // 行为埋点：小测完成
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackQuizFinish(task.id, score, total, wrong.length);
+        }
 
         const hasCorrectableWrong = wrong.length > 0 && !isDemo && typeof MasteryEngine !== 'undefined';
 
@@ -784,6 +841,11 @@
             currentRound,
             index: 0, score: 0, answers: []
         };
+
+        // 行为埋点：矫正开始
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackCorrectionStart(task.id, correctable.length, currentRound);
+        }
 
         const title = $('#quiz-modal-title');
         if (title) title.textContent = `掌握度矫正练习 (第${currentRound}轮)`;
@@ -912,6 +974,13 @@
         if (correct) currentMasterySession.score++;
         currentMasterySession.answers.push({ variantId: q.id, wrongId: rec.wrongId, correct, bloom: q.bloom, knowledgeTags: q.knowledgeTags });
 
+        // 行为埋点：矫正答题
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackCorrectionAnswer(
+                currentMasterySession.task.id, q.id, correct,
+                !!rec.variant.variantOf, currentMasterySession.currentRound);
+        }
+
         const isLast = currentMasterySession.index >= currentMasterySession.recommendations.length - 1;
         const footer = $('#quiz-modal-footer');
         footer.innerHTML = `
@@ -951,6 +1020,20 @@
         const hasFallback = topicResults.some(t => t.needsFallback);
         const totalQ = session.recommendations.length;
         const correctQ = session.score;
+
+        // 行为埋点：矫正轮次完成
+        if (typeof BehaviorTracker !== 'undefined') {
+            const anyTrack = topicResults.find(t => t.masteryTrack);
+            const anyFallback = topicResults.find(t => t.needsFallback);
+            BehaviorTracker.trackCorrectionFinish(
+                session.task.id, session.currentRound, allMastered,
+                anyTrack?.masteryTrack || null,
+                !!hasFallback, anyFallback?.fallbackReason || null);
+            // 回退学习事件
+            topicResults.filter(t => t.needsFallback).forEach(t => {
+                BehaviorTracker.trackFallbackTrigger(session.task.id, t.tag, t.bloom, t.fallbackReason);
+            });
+        }
 
         // 判定轨道说明
         const trackLabels = {
@@ -1136,6 +1219,11 @@
         currentExam = { projectId, test, index: 0, score: 0, answers: {}, wrong: [] };
         examAnswers = {};
         examStartTime = Date.now();
+
+        // 行为埋点：单元测试开始
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackUnitTestStart(projectId, test.questions.length);
+        }
 
         $('#exam-modal-title').textContent = test.title;
         $('#exam-timer').textContent = `剩余时间: ${test.duration}:00`;
@@ -1373,6 +1461,11 @@
         const isDemo = DemoMode.isActive();
         const percentage = isDemo ? Math.round((score / test.questions.length) * 100) : Storage.recordUnitTest(projectId, score, test.questions.length, answerList, wrong, duration);
 
+        // 行为埋点：单元测试完成
+        if (typeof BehaviorTracker !== 'undefined') {
+            BehaviorTracker.trackUnitTestFinish(projectId, score, test.questions.length, duration * 1000);
+        }
+
         // 显示结果
         const passed = percentage >= 60;
         $('#exam-modal-body').innerHTML = `
@@ -1468,6 +1561,12 @@
         if (data.wrongQuestions.length === 0) {
             wrongContainer.innerHTML = '<div class="empty-state"><div class="empty-state-title">暂无错题</div><div class="empty-state-desc">继续保持！</div></div>';
         } else {
+            // 行为埋点：查看错题列表
+            if (typeof BehaviorTracker !== 'undefined') {
+                data.wrongQuestions.slice(0, 20).forEach(w => {
+                    BehaviorTracker.trackWrongReview(w.questionId, 'view');
+                });
+            }
             wrongContainer.innerHTML = data.wrongQuestions.slice(0, 20).map((w, i) => {
                 // 演示模式下 MasteryEngine 读取的是 Storage.getData()（空数据），
                 // 所以直接从当前 data 上下文检查 masteryState
@@ -1514,6 +1613,10 @@
                     const idx = Array.from(wrongContainer.children).indexOf(item);
                     const wq = data.wrongQuestions[idx];
                     if (!wq) return;
+                    // 行为埋点：错题重做
+                    if (typeof BehaviorTracker !== 'undefined') {
+                        BehaviorTracker.trackWrongReview(wq.questionId, 'retry');
+                    }
                     const rec = MasteryEngine.getVariantForQuestion(wq.questionId);
                     if (!rec) { toast('该题暂无可用变式题'); return; }
                     currentMasterySession = {
@@ -1539,6 +1642,10 @@
                     const wq = data.wrongQuestions[idx];
                     if (!wq) return;
                     const reason = MasteryEngine.getFallbackReason(wq.questionId);
+                    // 行为埋点：回退学习
+                    if (typeof BehaviorTracker !== 'undefined') {
+                        BehaviorTracker.trackFallbackTrigger(wq.taskId, (wq.knowledgeTags || ['综合'])[0], wq.bloom || 'B1', reason);
+                    }
                     const task = COURSE_DATA.projects.flatMap(p => p.tasks).find(t => t.id === wq.taskId);
                     if (task) {
                         toast(reason || '建议回退到学习材料重新学习');
