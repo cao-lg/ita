@@ -436,19 +436,88 @@ function exportToExcel() {
     const ws4 = XLSX.utils.aoa_to_sheet(testData);
     XLSX.utils.book_append_sheet(wb, ws4, '单元测试');
 
-    // Sheet 5: 错题集
-    const wrongData = [['题目', '你的答案', '正确答案', '所属知识点', '时间']];
+    // Sheet 5: 错题集（含掌握学习完整字段）
+    const wrongData = [['题目ID', '题目', '题型', '布鲁姆层级', 'SOLO层级', '知识标签',
+        '你的答案', '正确答案', '错题时间',
+        '矫正轮次', '掌握状态', '判定轨道', '掌握时间']];
     _data.wrongQuestions.forEach(w => {
+        const tags = (w.knowledgeTags || []).join('/');
+        const ch = w.correctionHistory || [];
+        const chLen = ch.length;
+        const chCorrect = ch.filter(c => c.correct).length;
+        // 从 masteryState 获取回退/轨道信息
+        const wTag = (w.knowledgeTags || ['综合'])[0];
+        const wBloom = w.bloom || 'B1';
+        const msKey = wTag + '__' + wBloom;
+        const wMs = (_data.masteryState || {})[msKey];
+        const wNeedsFallback = !!(wMs && wMs.needsFallback);
+        const wTrack = wMs ? wMs.masteryTrack : null;
         wrongData.push([
+            w.questionId || '-',
             w.question,
+            w.type || 'single',
+            w.bloom || '-',
+            w.solo || '-',
+            tags || w.knowledgePoint || '-',
             w.yourAnswer,
             w.correctAnswer,
-            w.knowledgePoint || '-',
-            w.timestamp
+            w.timestamp,
+            `${chLen}轮(答对${chCorrect})`,
+            w.mastered ? '已掌握' : wNeedsFallback ? '需回退学习' : (chLen > 0 ? '矫正中' : '待矫正'),
+            wTrack ? ('轨道' + wTrack) : '-',
+            w.masteredAt || '-'
         ]);
     });
     const ws5 = XLSX.utils.aoa_to_sheet(wrongData);
     XLSX.utils.book_append_sheet(wb, ws5, '错题集');
+
+    // Sheet 6: 认知画像
+    const cp = _data.cognitiveProfile || {};
+    const bloomNames = { B1: '记忆', B2: '理解', B3: '应用', B4: '分析', B5: '评价', B6: '创造' };
+    const soloNames = { S1: '单点结构', S2: '多点结构', S3: '关联结构', S4: '抽象拓展' };
+    const cpBloomData = [['布鲁姆层级', '答对数', '总题数', '正确率(%)']];
+    ['B1','B2','B3','B4','B5','B6'].forEach(b => {
+        const t = (cp.bloomTotals || {})[b] || 0;
+        const s = (cp.bloomScores || {})[b] || 0;
+        cpBloomData.push([bloomNames[b] + '(' + b + ')', s, t, t > 0 ? Math.round(s / t * 100) : 0]);
+    });
+    const ws6 = XLSX.utils.aoa_to_sheet(cpBloomData);
+    XLSX.utils.book_append_sheet(wb, ws6, '布鲁姆认知画像');
+
+    const cpSoloData = [['SOLO层级', '答对数', '总题数', '正确率(%)']];
+    ['S1','S2','S3','S4'].forEach(s => {
+        const t = (cp.soloTotals || {})[s] || 0;
+        const sc = (cp.soloScores || {})[s] || 0;
+        cpSoloData.push([soloNames[s] + '(' + s + ')', sc, t, t > 0 ? Math.round(sc / t * 100) : 0]);
+    });
+    const ws7 = XLSX.utils.aoa_to_sheet(cpSoloData);
+    XLSX.utils.book_append_sheet(wb, ws7, 'SOLO学习层次');
+
+    const cpKnowData = [['知识点', '答对数', '总题数', '正确率(%)']];
+    Object.entries(cp.knowledgeScores || {}).forEach(([tag, ks]) => {
+        cpKnowData.push([tag, ks.correct, ks.total, ks.total > 0 ? Math.round(ks.correct / ks.total * 100) : 0]);
+    });
+    const ws8 = XLSX.utils.aoa_to_sheet(cpKnowData);
+    XLSX.utils.book_append_sheet(wb, ws8, '知识点掌握');
+
+    // Sheet 9: 掌握状态
+    const msData = [['知识点', '布鲁姆层级', '总尝试', '正确数', '正确率(%)',
+        '连续正确', '连续错误', '掌握状态', '判定轨道', '需回退学习', '回退原因', '掌握时间']];
+    Object.entries(_data.masteryState || {}).forEach(([key, ms]) => {
+        if (ms.totalAttempts === 0) return;
+        const [tag, bloom] = key.split('__');
+        msData.push([
+            tag, bloom, ms.totalAttempts, ms.correctCount, ms.accuracy,
+            ms.consecutiveCorrect || 0, ms.consecutiveWrong || 0,
+            ms.mastered ? '已掌握' : '未掌握',
+            ms.masteryTrack ? ('轨道' + ms.masteryTrack) : '-',
+            ms.needsFallback ? '是' : '否',
+            ms.fallbackReason || '',
+            ms.masteredAt || ''
+        ]);
+    });
+    const ws9 = XLSX.utils.aoa_to_sheet(msData);
+    XLSX.utils.book_append_sheet(wb, ws9, '掌握学习状态');
 
     XLSX.writeFile(wb, `${name}_经济管理大数据分析学习档案.xlsx`);
 }
@@ -457,11 +526,13 @@ function exportToExcel() {
 function importFromJSON(jsonStr) {
     try {
         const data = JSON.parse(jsonStr);
-        // 简单校验
+        // 基础校验
         if (!data.userInfo || !data.progress) {
             return { success: false, message: '文件格式不正确' };
         }
         _data = { ...getDefaultData(), ...data };
+        // 执行迁移确保新字段完整（如导入V1/V2旧数据）
+        _data = migrateData(_data);
         persist();
         return { success: true, message: '导入成功' };
     } catch (e) {
